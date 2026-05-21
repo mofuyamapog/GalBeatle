@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ギャルが応援してくれる！ばくれつカブトムシ！</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <style>
+        body {
+            background-color: #1a1a2e;
+            color: #fff;
+            text-align: center;
+            font-family: 'Courier New', Courier, monospace, sans-serif;
+            margin: 0;
+            padding: 10px 0;
+            overflow: hidden;
+            touch-action: none;
+        }
+        h1 { margin: 0 0 5px 0; font-size: 20px; color: #ff007f; text-shadow: 0 0 10px rgba(255,0,127,0.3); }
+        p { margin: 0 0 10px 0; color: #ccc; font-size: 11px; }
+        
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        canvas#gameCanvas {
+            background-color: #0f0f1a;
+            border: 4px solid #3498db;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.4);
+            display: block;
+            width: 100%;
+            max-width: 440px;
+            height: auto;
+            aspect-ratio: 1 / 1;
+        }
+
+        .sidebar {
+            width: 100%;
+            max-width: 440px;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .gal-area {
+            background-color: #0f0f1a;
+            border: 4px solid #ff007f;
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.4);
+            height: 140px;
+            flex: 1;
+            min-width: 140px;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        canvas#galCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .status-area {
+            background-color: #0f0f1a;
+            border: 4px solid #fff;
+            height: 140px;
+            flex: 1;
+            min-width: 140px;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: left;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+
+        .ranking-area {
+            background-color: #0f0f1a;
+            border: 4px solid #00ffff;
+            width: 100%;
+            height: 110px;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: left;
+            box-sizing: border-box;
+            font-size: 11px;
+        }
+
+        .ranking-title {
+            color: #00ffff;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 3px;
+            border-bottom: 1px dashed #00ffff;
+        }
+
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1px;
+        }
+
+        .status-item {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        #score { color: #fff; }
+        #level { color: #00ffff; }
+        #life { color: #ff2a6d; }
+        #chain { color: #fffb00; font-style: italic; min-height: 16px; font-size: 12px; }
+        
+        @media (min-width: 768px) {
+            .main-container { flex-direction: row; max-width: 760px; }
+            .sidebar { width: 240px; flex-direction: column; }
+            .gal-area { height: 180px; }
+            .status-area { height: 130px; }
+            .ranking-area { height: 145px; }
+            canvas#gameCanvas { max-width: 480px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ギャル応援！ばくれつカブトムシ！</h1>
+    <p>【操作】画面スライド : 左右移動 ＆ 自動連射（PCは矢印・スペースも可）</p>
+
+    <div class="main-container">
+        <canvas id="gameCanvas" width="480" height="480"></canvas>
+
+        <div class="sidebar">
+            <div class="gal-area">
+                <canvas id="galCanvas" width="240" height="180"></canvas>
+            </div>
+            
+            <div class="status-area">
+                <div class="status-item">SCORE: <span id="score">0</span></div>
+                <div class="status-item">LEVEL: <span id="level">1</span></div>
+                <div class="status-item">LIFE: <span id="life">♥♥♥</span></div>
+                <div class="status-item" id="chain"></div>
+            </div>
+
+            <div class="ranking-area">
+                <div class="ranking-title">🏆 世界オンラインTOP5 🏆</div>
+                <div id="rankingList">ロード中...</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+try {
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const galCanvas = document.getElementById("galCanvas");
+    const galCtx = galCanvas.getContext("2d");
+
+    const scoreEl = document.getElementById("score");
+    const levelEl = document.getElementById("level");
+    const lifeEl = document.getElementById("life");
+    const chainEl = document.getElementById("chain");
+    const rankingListEl = document.getElementById("rankingList");
+
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05N1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
+
+    // --- サウンド生成システム ---
+    let audioCtx = null;
+    function playSound(type, comboCount = 1) {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioCtx || audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            if (type === 'shoot') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+                gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.08);
+                osc.start(now); osc.stop(now + 0.08);
+            } else if (type === 'hit') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(40, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'combo') {
+                osc.type = 'sine'; const baseFreq = 300 + (comboCount * 80);
+                osc.frequency.setValueAtTime(baseFreq, now); osc.frequency.setValueAtTime(baseFreq * 1.5, now + 0.05);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(now); osc.stop(now + 0.15);
+            } else if (type === 'damage') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(10, now + 0.3);
+                gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'star') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.08); osc.frequency.setValueAtTime(783.99, now + 0.16);
+                osc.frequency.setValueAtTime(1046.50, now + 0.24); gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4);
+            } else if (type === 'bonus') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(880, now);
+                osc.frequency.setValueAtTime(1760, now + 0.06); gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2); osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'heal') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, now);
+                osc.frequency.setValueAtTime(880.00, now + 0.08); gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.25); osc.start(now); osc.stop(now + 0.25);
+            }
+        } catch (e) {}
+    }
+
+    function resumeAudio() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        } catch(e){}
+    }
+    window.addEventListener('click', resumeAudio);
+    window.addEventListener('keydown', resumeAudio);
+    window.addEventListener('touchstart', resumeAudio);
+
+    let player, bullets, shells, fragments, score, combo, comboTimer, items, scoreEffects;
+    let lives = 3;
+    let isGameOver = false;
+    let currentLevel = 1;
+    let spawnTimer = 0;
+    let isSubmitting = false;
+    let isTouching = false;
+    let autoShootTimer = 0;
+
+    let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
+
+    const LEVEL_TABLE = [
+        { maxScore: 5000,    spawnRate: 60, speedMin: 0.5, speedMax: 1.5 },
+        { maxScore: 30000,   spawnRate: 52, speedMin: 0.7, speedMax: 1.8 },
+        { maxScore: 100000,  spawnRate: 45, speedMin: 0.9, speedMax: 2.1 },
+        { maxScore: 300000,  spawnRate: 38, speedMin: 1.2, speedMax: 2.4 },
+        { maxScore: 500000,  spawnRate: 32, speedMin: 1.5, speedMax: 2.8 },
+        { maxScore: 1000000, spawnRate: 26, speedMin: 1.8, speedMax: 3.2 },
+        { maxScore: 2000000, spawnRate: 20, speedMin: 2.2, speedMax: 3.6 },
+        { maxScore: 3500000, spawnRate: 16, speedMin: 2.6, speedMax: 4.2 },
+        { maxScore: 5000000, spawnRate: 13, speedMin: 3.0, speedMax: 4.8 },
+        { maxScore: Infinity,spawnRate: 10, speedMin: 3.5, speedMax: 5.5 }
+    ];
+
+    const GAMEOVER_GAL_TALK = [
+        { minScore: 0,        text: "画面見てた？さすがにオワコンw" },
+        { minScore: 293,      text: "ねえ嘘でしょ？雑魚すぎw" },
+        { minScore: 1001,     text: "あーね、つぎ頑張ろ！" },
+        { minScore: 10000,    text: "まあまあじゃん？やる〜" },
+        { minScore: 50000,    text: "お、結構粘ったね！ウケる" },
+        { minScore: 100000,   text: "普通に凄くない？やるやん" },
+        { minScore: 300000,   text: "ヤバ！うちより上手いかも" },
+        { minScore: 600000,   text: "ガチ勢じゃん！神ってる！" },
+        { minScore: 1000000,  text: "ミリオン達成とかマジリプ！" },
+        { minScore: 2000000,  text: "えっ、２ミリオン？天才すぎっ" },
+        { minScore: 3000000,  text: "もはやプロやん、尊い…！" },
+        { minScore: 5000000,  text: "異次元すぎ！愛してるー！" },
+        { minScore: 7500000,  text: "全一狙えるレベルっしょこれ！" },
+        { minScore: 10000000, text: "大台突破！まじで神の領域！" },
+        { minScore: 15000000, text: "脳汁枯れるわ！伝説の目撃者w" },
+        { minScore: 20000000, text: "2千万とか覇王！結婚してッ！" }
+    ];
+
+    function loadRanking() {
+        try {
+            if(!GAS_URL || GAS_URL.includes("ここに")) { rankingListEl.innerText = "ローカル稼働中"; return; }
+            fetch(GAS_URL)
+            .then(res => res.json())
+            .then(data => {
+                rankingListEl.innerHTML = "";
+                if(!data || data.length === 0) { rankingListEl.innerText = "ランキングはまだ空です"; return; }
+                data.forEach((item, index) => {
+                    let div = document.createElement("div"); div.className = "ranking-item";
+                    div.innerHTML = `<span>${index + 1}位: ${item.name}</span><span>${item.score.toLocaleString()}点</span>`;
+                    rankingListEl.appendChild(div);
+                });
+            })
+            .catch(e => { rankingListEl.innerText = "オフライン稼働中"; });
+        } catch(e) { rankingListEl.innerText = "オフライン稼働中"; }
+    }
+
+    function sendScore(playerName) {
+        try {
+            if(!GAS_URL || isSubmitting) return;
+            isSubmitting = true;
+            fetch(GAS_URL, {
+                method: "POST", mode: "no-cors", 
+                body: JSON.stringify({ name: playerName, score: score }),
+                headers: { "Content-Type": "text/plain" }
+            })
+            .then(() => { setTimeout(() => { isSubmitting = false; loadRanking(); }, 1500); })
+            .catch(err => { isSubmitting = false; loadRanking(); });
+        } catch(e) { isSubmitting = false; }
+    }
+
+    function initGame() {
+        player = { x: 223, y: 440, width: 34, height: 24, speed: 5, cooldown: false, invincible: 0, starTime: 0 };
+        bullets = []; shells = []; fragments = []; items = []; scoreEffects = [];
+        score = 0; combo = 0; comboTimer = 0; lives = 3; isGameOver = false; currentLevel = 1; spawnTimer = 0; isTouching = false;
+        gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0;
+        loadRanking();
+    }
+
+    let keys = {};
+    window.addEventListener("keydown", (e) => {
+        keys[e.code] = true;
+        if (isGameOver && e.code === "Space" && !isSubmitting) initGame();
+    });
+    window.addEventListener("keyup", (e) => keys[e.code] = false);
+
+    function handleTouch(e) {
+        if (isGameOver) return;
+        isTouching = true;
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        const canvasX = ((touch.clientX - rect.left) / rect.width) * canvas.width;
+        player.x = canvasX - player.width / 2;
+        if (player.x < 0) player.x = 0;
+        if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+    }
+
+    canvas.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (isGameOver && !isSubmitting) { initGame(); return; }
+        handleTouch(e);
+    });
+    canvas.addEventListener("touchmove", (e) => { e.preventDefault(); handleTouch(e); });
+    canvas.addEventListener("touchend", () => { isTouching = false; });
+
+    function gameLoop() {
+        try { update(); draw(); } catch(e) { console.error("Loop Error:", e); }
+        requestAnimationFrame(gameLoop);
+    }
+
+    function update() {
+        if (isGameOver) return;
+        if (player.invincible > 0) player.invincible--;
+        if (player.starTime > 0) player.starTime--;
+
+        for (let i = 0; i < LEVEL_TABLE.length; i++) {
+            if (score < LEVEL_TABLE[i].maxScore) { currentLevel = i + 1; break; }
+        }
+
+        let config = LEVEL_TABLE[currentLevel - 1];
+        spawnTimer++;
+        if (spawnTimer >= config.spawnRate) {
+            spawnTimer = 0;
+            shells.push({
+                x: Math.random() * (canvas.width - 40) + 20, y: -20,
+                vx: (Math.random() - 0.5) * 2,
+                vy: Math.random() * (config.speedMax - config.speedMin) + config.speedMin,
+                radius: 16, angle: Math.random() * Math.PI
+            });
+            let rand = Math.random();
+            if (rand < 0.01) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'star' });
+            else if (rand < 0.02) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'heal' });
+        }
+
+        if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
+        if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
+
+        autoShootTimer++;
+        if ((isTouching || keys["Space"]) && bullets.length < 3 && autoShootTimer >= 11) {
+            bullets.push({ x: player.x + player.width / 2, y: player.y, radius: 5, speed: 8 });
+            playSound('shoot');
+            autoShootTimer = 0;
+        }
+
+        bullets.forEach((b, i) => { b.y -= b.speed; if (b.y < 0) bullets.splice(i, 1); });
+        shells.forEach((s) => {
+            s.x += s.vx; s.y += s.vy; s.angle += 0.02;
+            if (s.x - s.radius < 0) { s.x = s.radius; s.vx *= -1; }
+            if (s.x + s.radius > canvas.width) { s.x = canvas.width - s.radius; s.vx *= -1; }
+            if (s.y - s.radius < 0 && s.vy < 0) { s.vy *= -1; }
+            if (s.y + s.radius > canvas.height && s.vy > 0) { s.vy *= -1; }
+        });
+        items.forEach((item, i) => { item.y += item.vy; if (item.y > canvas.height + 20) items.splice(i, 1); });
+        fragments.forEach((f, i) => { f.x += f.vx; f.y += f.vy; f.life--; if (f.life <= 0) fragments.splice(i, 1); });
+        scoreEffects.forEach((eff, i) => { eff.y -= 0.8; eff.life--; if (eff.life <= 0) scoreEffects.splice(i, 1); });
+
+        if (combo > 0) { comboTimer--; if (comboTimer <= 0) combo = 0; }
+        if (gal.jumpY < 0 || gal.jumpSpeed !== 0) {
+            gal.jumpY += gal.jumpSpeed; gal.jumpSpeed += 0.4;
+            if (gal.jumpY >= 0) { gal.jumpY = 0; gal.jumpSpeed = 0; }
+        }
+        if (gal.textTimer > 0) {
+            gal.textTimer--;
+            if (gal.textTimer <= 0 && combo === 0 && player.starTime === 0) gal.text = "うちが見守ってんよ！";
+        }
+
+        bullets.forEach((b, bi) => {
+            shells.forEach((s, si) => {
+                if (Math.hypot(b.x - s.x, b.y - s.y) < b.radius + s.radius) {
+                    bullets.splice(bi, 1); triggerExplosion(s.x, s.y, false); shells.splice(si, 1);
+                }
+            });
+        });
+        fragments.forEach((f) => {
+            shells.forEach((s, si) => {
+                if (Math.hypot(f.x - s.x, f.y - s.y) < f.radius + s.radius) {
+                    triggerExplosion(s.x, s.y, true); shells.splice(si, 1);
+                }
+            });
+        });
+
+        let playerCenterX = player.x + player.width / 2;
+        let playerCenterY = player.y + player.height / 2;
+        items.forEach((item, i) => {
+            if (Math.hypot(playerCenterX - item.x, playerCenterY - item.y) < item.radius + player.width / 2) {
+                items.splice(i, 1);
+                if (item.type === 'star') { player.starTime = 300; playSound('star'); gal.text = "無敵スターキタ！"; gal.jumpSpeed = -6; } 
+                else if (item.type === 'heal') { lives++; playSound('heal'); gal.text = "ないす回復〜！"; gal.jumpSpeed = -4; }
+                gal.textTimer = 120;
+            }
+        });
+
+        if (player.invincible === 0 && player.starTime === 0 && !isGameOver) {
+            shells.forEach((s, si) => {
+                if (Math.hypot(playerCenterX - s.x, playerCenterY - s.y) < s.radius + player.width / 2) { playerHit(); shells.splice(si, 1); }
+            });
+            fragments.forEach((f, fi) => {
+                if (Math.hypot(playerCenterX - f.x, playerCenterY - f.y) < f.radius + player.width / 2) { playerHit(); fragments.splice(fi, 1); }
+            });
+        }
+
+        scoreEl.innerText = score; levelEl.innerText = currentLevel;
+        lifeEl.innerText = "♥".repeat(Math.max(0, lives));
+        chainEl.innerText = combo > 1 ? `${combo} CHAIN!!` : "";
+    }
+
+    function playerHit() {
+        player.invincible = 90; lives--; playSound('damage');
+        if (lives <= 0) {
+            isGameOver = true; player.invincible = 99999; isTouching = false;
+            for (let i = GAMEOVER_GAL_TALK.length - 1; i >= 0; i--) {
+                if (score >= GAMEOVER_GAL_TALK[i].minScore) { gal.text = GAMEOVER_GAL_TALK[i].text; break; }
+            }
+            if(GAS_URL && !GAS_URL.includes("ここに")) {
+                setTimeout(() => {
+                    let name = prompt(`ゲームオーバー！スコア: ${score}点\nランキングに登録する名前を入力してね:`, "カブト主");
+                    if(!name || name.trim() === "") name = "匿名";
+                    sendScore(name.substring(0, 10));
+                }, 500);
+            }
+        } else {
+            gal.text = "ちょ、ウケる頑ば！"; gal.textTimer = 90;
+        }
+    }
+
+    function triggerExplosion(x, y, isChain) {
+        if (isChain) {
+            combo++; playSound('combo', combo);
+            if (combo % 10 === 0) {
+                score += 5; playSound('bonus');
+                scoreEffects.push({ x: canvas.width / 2, y: canvas.height / 2, text: "+5 BONUS!", life: 60, color: "#ffff00" });
+                gal.jumpSpeed = -5.5;
+                if (combo === 10) gal.text = "コンボ異次元！";
+                if (combo === 20) gal.text = "画面お祭り騒ぎw";
+                if (combo >= 30) gal.text = "まじスコア爆発っ";
+                gal.textTimer = 120;
+            } else if (combo >= 3) {
+                gal.jumpSpeed = -5;
+                if (combo === 3 && gal.textTimer <= 0) gal.text = "ヤバッ！";
+                if (combo === 6) gal.text = "天才すぎん？";
+                gal.textTimer = 90;
+            }
+        } else { combo = 1; playSound('hit'); }
+        comboTimer = 90;
+        let points = Math.min(Math.pow(2, combo - 1), 9999); score += points;
+        scoreEffects.push({ x: x, y: y - 10, text: `+${points}`, life: 40, color: isChain ? "#ffeb3b" : "#ffffff" });
+        for (let i = 0; i < 8; i++) {
+            let angle = (Math.PI * 2 / 8) * i;
+            fragments.push({ x: x, y: y, vx: Math.cos(angle) * 4.5, vy: Math.sin(angle) * 4.5, radius: 5, life: 35 });
+        }
+    }
+
+    function drawGalRoom() {
+        galCtx.clearRect(0, 0, galCanvas.width, galCanvas.height);
+        galCtx.strokeStyle = "#251225"; galCtx.lineWidth = 1;
+        for(let i=0; i<galCanvas.width; i+=20) {
+            galCtx.beginPath(); galCtx.moveTo(i, 0); galCtx.lineTo(i, galCanvas.height); galCtx.stroke();
+            galCtx.beginPath(); galCtx.moveTo(0, i); galCtx.lineTo(galCanvas.width, i); galCtx.stroke();
+        }
+        galCtx.save(); galCtx.translate(gal.x, gal.y + gal.jumpY);
+        galCtx.fillStyle = "#f1c40f"; galCtx.fillRect(-15, -45, 30, 35);
+        galCtx.fillRect(-18, -30, 6, 30); galCtx.fillRect(12, -30, 6, 30);
+        galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -40, 20, 20);
+        galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-6, -34, 3, 4); galCtx.fillRect(3, -34, 3, 4);
+        galCtx.fillStyle = "#ff66b2"; galCtx.fillRect(-2, -26, 4, 2);
+        galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-10, -20, 20, 10);
+        galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -10, 20, 5);
+        galCtx.fillStyle = "#3498db"; galCtx.fillRect(-12, -5, 24, 10);
+        galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-7, 5, 5, 15); galCtx.fillRect(2, 5, 5, 15);
+        galCtx.fillStyle = "#ffffff"; galCtx.fillRect(-9, 12, 8, 12); galCtx.fillRect(1, 12, 8, 12);
+
+        galCtx.fillStyle = "#ffffff"; galCtx.strokeStyle = "#ff007f"; galCtx.lineWidth = 2;
+        galCtx.fillRect(-105, -78, 210, 26); galCtx.strokeRect(-105, -78, 210, 26);
+        galCtx.beginPath(); galCtx.moveTo(-5, -52); galCtx.lineTo(5, -52); galCtx.lineTo(0, -42);
+        galCtx.closePath(); galCtx.fill(); galCtx.stroke();
+        galCtx.fillStyle = "#111122"; galCtx.font = "bold 11px sans-serif"; galCtx.textAlign = "center";
+        galCtx.fillText(gal.text, 0, -61); galCtx.textAlign = "left"; galCtx.restore();
+    }
+
+    function drawBeetle(x, y, w, h) {
+        if (player.starTime > 0) { ctx.fillStyle = `hsl(${(Date.now() / 2) % 360}, 100%, 60%)`; } 
+        else { ctx.fillStyle = "#4e3629"; }
+        ctx.fillRect(x + 4, y + 6, w - 8, h - 6);
+        ctx.fillStyle = player.starTime > 0 ? `hsl(${(Date.now() / 2 + 180) % 360}, 100%, 60%)` : "#362217";
+        ctx.fillRect(x + w/2 - 2, y, 4, 8); ctx.fillRect(x + w/2 - 6, y, 12, 2);
+        ctx.fillStyle = "#fff"; ctx.fillRect(x + 6, y + 8, 4, 4); ctx.fillRect(x + w - 10, y + 8, 4, 4);
+    }
+
+    function drawShell(x, y, r, angle) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.fillStyle = "#2ecc71";
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#27ae60"; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = "#ffffff";
+        for(let i=0; i<4; i++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(-4, -r); ctx.lineTo(0, -r - 6); ctx.lineTo(4, -r); ctx.fill(); }
+        ctx.restore();
+    }
+
+    // 破片のエフェクト星
+    function drawStar(x, y, r) {
+        ctx.fillStyle = "#ff4081"; ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * r + x, -Math.sin((18 + i * 72) * Math.PI / 180) * r + y);
+            ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * (r/2) + x, -Math.sin((54 + i * 72) * Math.PI / 180) * (r/2) + y);
+        }
+        ctx.closePath(); ctx.fill();
+    }
+
+    function drawHeartShape(cx, cy, r) {
+        ctx.beginPath(); ctx.fillStyle = (Math.floor(Date.now() / 150) % 2 === 0) ? "#ff2a6d" : "#ff7da7";
+        let topY = cy - r * 0.4; ctx.moveTo(cx, cy + r * 0.5);
+        ctx.bezierCurveTo(cx - r * 1.2, cy - r * 0.2, cx - r * 0.8, topY - r * 0.6, cx, cy - r * 0.2);
+        ctx.bezierCurveTo(cx + r * 0.8, topY - r * 0.6, cx + r * 1.2, cy - r * 0.2, cx, cy + r * 0.5); ctx.fill();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
+        for(let i=0; i<canvas.width; i+=30) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        if (player.starTime > 0 || player.invincible === 0 || Math.floor(player.invincible / 4) % 2 === 0) {
+            drawBeetle(player.x, player.y, player.width, player.height);
+        }
+        bullets.forEach(b => { ctx.fillStyle = "#00ffff"; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill(); });
+        items.forEach(item => {
+            if (item.type === 'star') {
+                let grad = ctx.createRadialGradient(item.x, item.y, 2, item.x, item.y, item.radius);
+                let pulse = (Date.now() / 100) % 360; grad.addColorStop(0, `hsl(${pulse}, 100%, 70%)`); grad.addColorStop(1, `hsl(${(pulse+120)%360}, 100%, 40%)`);
+                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2); ctx.fill();
+            } else if (item.type === 'heal') { drawHeartShape(item.x, item.y, item.radius * 1.3); }
+        });
+        shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
+        fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
+        scoreEffects.forEach(eff => {
+            ctx.fillStyle = eff.color; ctx.font = eff.text.includes("BONUS") ? "bold 24px sans-serif" : "bold 14px sans-serif";
+            ctx.fillText(eff.text, eff.x - 40, eff.y);
+        });
+
+        if (isGameOver) {
+            ctx.fillStyle = "rgba(10, 10, 26, 0.85)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#ff007f"; ctx.font = "bold 40px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillStyle = "#fff"; ctx.font = "18px sans-serif";
+            ctx.fillText(`FINAL SCORE: ${score}`, canvas.width / 2, canvas.height / 2 + 25);
+            ctx.font = "14px sans-serif"; ctx.fillText(isSubmitting ? "スコア送信中..." : "Tap / Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 65);
+            ctx.textAlign = "left";
+        }
+        drawGalRoom();
+    }
+
+    initGame();
+    gameLoop();
+} catch(e) {
+    document.body.innerHTML = `<div style="padding:20px;font-size:16px;"><h3>ゲーム起動エラー</h3><p>ファイルの貼り付けミスかもしれません。</p></div>`;
+}
+</script>
+</body>
+</html>
