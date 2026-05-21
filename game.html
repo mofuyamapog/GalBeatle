@@ -107,8 +107,7 @@
         }
 
         .gal-area {
-            /* 🌟【エラーチェック機能】もし画像が読み込めない場合は、真っ黒ではなく「明るいピンク色」になります */
-            background-color: #ff007f; 
+            background-color: #0f0f1a;
             border: 3px solid #ff007f;
             box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
             height: 110px;
@@ -118,7 +117,6 @@
             position: relative;
             overflow: hidden;
             background-image: url('gal.png');
-            /* 🌟【修正】画像サイズを縮小し、画面いっぱいに無理やり広げず、上部に綺麗に収まるように固定 */
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center top;
@@ -196,12 +194,10 @@
             .main-container { flex-direction: row; max-width: 760px; }
             .controller-area { display: none; }
             .sidebar { width: 240px; flex-direction: column; }
-            /* 🌟【PC版の超重要修正】大画面のときも、画像サイズを縦横綺麗にフィットさせ、はみ出さないようにガチ固定 */
             .gal-area { 
                 height: 180px; 
                 background-size: contain;
                 background-position: center center;
-                background-color: #0f0f1a; /* PC大画面時は背景を暗く */
             }
             .status-area { height: 130px; }
             .ranking-area { height: 145px; }
@@ -527,7 +523,8 @@ try {
                 if (Math.hypot(playerCenterX - s.x, playerCenterY - s.y) < s.radius + player.width / 2) { playerHit(); shells.splice(si, 1); }
             });
             fragments.forEach((f, fi) => {
-                if (Math.hypot(playerCenterX - f.x, playerCenterY - f.y) < f.radius + player.width / 2) { playerHit(); fragments.fi, 1); }
+                // 🌟【修正】大文字小文字バグの起きていたタイポを完全に修正しました
+                if (Math.hypot(playerCenterX - f.x, playerCenterY - f.y) < f.radius + player.width / 2) { playerHit(); fragments.splice(fi, 1); }
             });
         }
 
@@ -593,6 +590,7 @@ try {
         ctx.fillStyle = "#fff"; ctx.fillRect(x + 6, y + 8, 4, 4); ctx.fillRect(x + w - 10, y + 8, 4, 4);
     }
 
+    // 甲羅の描画（ここも前回修正済みの安定状態です）
     function drawShell(x, y, r, angle) {
         ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.fillStyle = "#2ecc71";
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
