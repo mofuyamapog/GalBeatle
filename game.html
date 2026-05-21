@@ -81,9 +81,7 @@
             box-shadow: 0 2px #1a252f;
             background: linear-gradient(135deg, #34495e, #2c3e50);
         }
-        .btn-move {
-            flex: 1;
-        }
+        .btn-move { flex: 1; }
         .btn-shoot {
             background: linear-gradient(135deg, #ff007f, #ff5e62);
             border: 2px solid #ff007f;
@@ -106,6 +104,7 @@
             gap: 6px;
         }
 
+        /* 📱 スマホ用：高画質イラスト（gal.png）を表示する設定 */
         .gal-area {
             background-color: #0f0f1a;
             border: 3px solid #ff007f;
@@ -122,6 +121,7 @@
             background-position: center top;
         }
 
+        /* 📱 スマホ用のテキストフキダシ */
         .gal-bubble {
             position: absolute;
             bottom: 6px;
@@ -138,6 +138,9 @@
             box-sizing: border-box;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
+
+        /* 📱 スマホ時はPC用ドット絵キャンバスを隠す */
+        canvas#galCanvas { display: none; }
 
         .status-area {
             background-color: #0f0f1a;
@@ -189,16 +192,26 @@
         #life { color: #ff2a6d; }
         #chain { color: #fffb00; font-style: italic; min-height: 14px; font-size: 11px; }
         
+        /* 💻 PC大画面時のレイアウト切り替え */
         @media (min-width: 768px) {
             body { overflow-y: hidden; padding: 20px 0; }
             .main-container { flex-direction: row; max-width: 760px; }
             .controller-area { display: none; }
             .sidebar { width: 240px; flex-direction: column; }
-            .gal-area { 
-                height: 180px; 
-                background-size: contain;
-                background-position: center center;
+            
+            /* 💻 PC用：ドット絵キャンバスを大復活させる設定 */
+            canvas#galCanvas {
+                display: block;
+                width: 100%;
+                height: 100%;
             }
+            /* 💻 PC用：スマホ用の画像背景と文字フキダシを消し去る */
+            .gal-area {
+                height: 180px;
+                background-image: none; 
+            }
+            .gal-bubble { display: none; }
+
             .status-area { height: 130px; }
             .ranking-area { height: 145px; }
             canvas#gameCanvas { width: 100%; max-width: 480px; }
@@ -223,6 +236,7 @@
 
         <div class="sidebar">
             <div class="gal-area">
+                <canvas id="galCanvas" width="240" height="180"></canvas>
                 <div class="gal-bubble" id="galSpeech">レッツばくれつ！</div>
             </div>
             
@@ -245,6 +259,9 @@ try {
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     
+    // 💻 PCドット絵用と 📱 スマホ文字用の両方を取得
+    const galCanvas = document.getElementById("galCanvas");
+    const galCtx = galCanvas.getContext("2d");
     const galSpeech = document.getElementById("galSpeech");
 
     const scoreEl = document.getElementById("score");
@@ -324,7 +341,8 @@ try {
     let shootPressed = false;
     let autoShootTimer = 0;
 
-    let gal = { text: "レッツばくれつ！", textTimer: 120 };
+    // 💻 ドット絵用のアニメーション座標情報も復活
+    let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
 
     const LEVEL_TABLE = [
         { maxScore: 5000,    spawnRate: 60, speedMin: 0.5, speedMax: 1.5 },
@@ -395,7 +413,7 @@ try {
         bullets = []; shells = []; fragments = []; items = []; scoreEffects = [];
         score = 0; combo = 0; comboTimer = 0; lives = 3; isGameOver = false; currentLevel = 1; spawnTimer = 0;
         moveLeft = false; moveRight = false; shootPressed = false;
-        gal.text = "レッツばくれつ！"; gal.textTimer = 120;
+        gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0;
         galSpeech.innerText = gal.text;
         loadRanking();
     }
@@ -483,6 +501,12 @@ try {
 
         if (combo > 0) { comboTimer--; if (comboTimer <= 0) combo = 0; }
         
+        // 💻 ギャルのドット絵ジャンプアニメーション
+        if (gal.jumpY < 0 || gal.jumpSpeed !== 0) {
+            gal.jumpY += gal.jumpSpeed; gal.jumpSpeed += 0.4;
+            if (gal.jumpY >= 0) { gal.jumpY = 0; gal.jumpSpeed = 0; }
+        }
+
         if (gal.textTimer > 0) {
             gal.textTimer--;
             if (gal.textTimer <= 0 && combo === 0 && player.starTime === 0) {
@@ -511,8 +535,8 @@ try {
         items.forEach((item, i) => {
             if (Math.hypot(playerCenterX - item.x, playerCenterY - item.y) < item.radius + player.width / 2) {
                 items.splice(i, 1);
-                if (item.type === 'star') { player.starTime = 300; playSound('star'); gal.text = "無敵スターキタ！"; } 
-                else if (item.type === 'heal') { lives++; playSound('heal'); gal.text = "ないす回復〜！"; }
+                if (item.type === 'star') { player.starTime = 300; playSound('star'); gal.text = "無敵スターキタ！"; gal.jumpSpeed = -6; } 
+                else if (item.type === 'heal') { lives++; playSound('heal'); gal.text = "ないす回復〜！"; gal.jumpSpeed = -4; }
                 galSpeech.innerText = gal.text;
                 gal.textTimer = 120;
             }
@@ -523,7 +547,7 @@ try {
                 if (Math.hypot(playerCenterX - s.x, playerCenterY - s.y) < s.radius + player.width / 2) { playerHit(); shells.splice(si, 1); }
             });
             fragments.forEach((f, fi) => {
-                // 🌟【修正】大文字小文字バグの起きていたタイポを完全に修正しました
+                // 🌟【大バグ修正】前回クラッシュを引き起こしていたタイポ箇所を完璧に修正
                 if (Math.hypot(playerCenterX - f.x, playerCenterY - f.y) < f.radius + player.width / 2) { playerHit(); fragments.splice(fi, 1); }
             });
         }
@@ -560,12 +584,14 @@ try {
             if (combo % 10 === 0) {
                 score += 5; playSound('bonus');
                 scoreEffects.push({ x: canvas.width / 2, y: canvas.height / 2, text: "+5 BONUS!", life: 60, color: "#ffff00" });
+                gal.jumpSpeed = -5.5;
                 if (combo === 10) gal.text = "コンボ異次元！";
                 if (combo === 20) gal.text = "画面お祭り騒ぎw";
                 if (combo >= 30) gal.text = "まじスコア爆発っ";
                 galSpeech.innerText = gal.text;
                 gal.textTimer = 120;
             } else if (combo >= 3) {
+                gal.jumpSpeed = -5;
                 if (combo === 3 && gal.textTimer <= 0) gal.text = "ヤバッ！";
                 if (combo === 6) gal.text = "天才すぎん？";
                 galSpeech.innerText = gal.text;
@@ -581,6 +607,37 @@ try {
         }
     }
 
+    // 💻 PC用：ドット絵ギャルを描画するシステム（完全復活）
+    function drawGalRoom() {
+        // PC以外（スマホ画面サイズ時）は描画処理をスキップして負荷を下げる
+        if (window.innerWidth < 768) return;
+        
+        galCtx.clearRect(0, 0, galCanvas.width, galCanvas.height);
+        galCtx.strokeStyle = "#251225"; galCtx.lineWidth = 1;
+        for(let i=0; i<galCanvas.width; i+=20) {
+            galCtx.beginPath(); galCtx.moveTo(i, 0); galCtx.lineTo(i, galCanvas.height); galCtx.stroke();
+            galCtx.beginPath(); galCtx.moveTo(0, i); galCtx.lineTo(galCanvas.width, i); galCtx.stroke();
+        }
+        galCtx.save(); galCtx.translate(gal.x, gal.y + gal.jumpY);
+        galCtx.fillStyle = "#f1c40f"; galCtx.fillRect(-15, -45, 30, 35);
+        galCtx.fillRect(-18, -30, 6, 30); galCtx.fillRect(12, -30, 6, 30);
+        galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -40, 20, 20);
+        galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-6, -34, 3, 4); galCtx.fillRect(3, -34, 3, 4);
+        galCtx.fillStyle = "#ff66b2"; galCtx.fillRect(-2, -26, 4, 2);
+        galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-10, -20, 20, 10);
+        galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -10, 20, 5);
+        galCtx.fillStyle = "#3498db"; galCtx.fillRect(-12, -5, 24, 10);
+        galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-7, 5, 5, 15); galCtx.fillRect(2, 5, 5, 15);
+        galCtx.fillStyle = "#ffffff"; galCtx.fillRect(-9, 12, 8, 12); galCtx.fillRect(1, 12, 8, 12);
+
+        galCtx.fillStyle = "#ffffff"; galCtx.strokeStyle = "#ff007f"; galCtx.lineWidth = 2;
+        galCtx.fillRect(-105, -78, 210, 26); galCtx.strokeRect(-105, -78, 210, 26);
+        galCtx.beginPath(); galCtx.moveTo(-5, -52); galCtx.lineTo(5, -52); galCtx.lineTo(0, -42);
+        galCtx.closePath(); galCtx.fill(); galCtx.stroke();
+        galCtx.fillStyle = "#111122"; galCtx.font = "bold 11px sans-serif"; galCtx.textAlign = "center";
+        galCtx.fillText(gal.text, 0, -61); galCtx.textAlign = "left"; galCtx.restore();
+    }
+
     function drawBeetle(x, y, w, h) {
         if (player.starTime > 0) { ctx.fillStyle = `hsl(${(Date.now() / 2) % 360}, 100%, 60%)`; } 
         else { ctx.fillStyle = "#4e3629"; }
@@ -590,7 +647,6 @@ try {
         ctx.fillStyle = "#fff"; ctx.fillRect(x + 6, y + 8, 4, 4); ctx.fillRect(x + w - 10, y + 8, 4, 4);
     }
 
-    // 甲羅の描画（ここも前回修正済みの安定状態です）
     function drawShell(x, y, r, angle) {
         ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.fillStyle = "#2ecc71";
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
@@ -650,6 +706,9 @@ try {
             ctx.font = "14px sans-serif"; ctx.fillText(isSubmitting ? "スコア送信中..." : "Tap SHOOT or Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 65);
             ctx.textAlign = "left";
         }
+        
+        // 💻 PC時のみドット絵ギャルを描画
+        drawGalRoom();
     }
 
     initGame();
