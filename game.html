@@ -17,19 +17,19 @@
             text-align: center;
             font-family: 'Courier New', Courier, monospace, sans-serif;
             margin: 0;
-            padding: 10px 0;
-            overflow: hidden;
-            touch-action: none;
+            padding: 10px 0 30px 0; /* ★下部に余白を作ってスクロールしやすく */
+            overflow-y: auto;       /* ★スマホ画面からはみ出しても下にスクロールして見られるように許可 */
+            -webkit-overflow-scrolling: touch;
         }
-        h1 { margin: 0 0 5px 0; font-size: 20px; color: #ff007f; text-shadow: 0 0 10px rgba(255,0,127,0.3); }
-        p { margin: 0 0 10px 0; color: #ccc; font-size: 11px; }
+        h1 { margin: 0 0 5px 0; font-size: 18px; color: #ff007f; text-shadow: 0 0 10px rgba(255,0,127,0.3); }
+        p { margin: 0 0 8px 0; color: #ccc; font-size: 10px; }
         
         .main-container {
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             margin: 0 auto;
             width: 100%;
             max-width: 480px;
@@ -38,30 +38,30 @@
         canvas#gameCanvas {
             background-color: #0f0f1a;
             border: 4px solid #3498db;
-            box-shadow: 0 0 20px rgba(52, 152, 219, 0.4);
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.4);
             display: block;
-            width: 100%;
+            width: 92%; /* ★少しだけ小さくしてスマホでの圧迫感を軽減 */
             max-width: 440px;
             height: auto;
             aspect-ratio: 1 / 1;
         }
 
         .sidebar {
-            width: 100%;
+            width: 92%; /* ★ゲーム画面の横幅に合わせる */
             max-width: 440px;
             display: flex;
             flex-direction: row;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
 
         .gal-area {
             background-color: #0f0f1a;
-            border: 4px solid #ff007f;
-            box-shadow: 0 0 20px rgba(255, 0, 127, 0.4);
-            height: 140px;
+            border: 3px solid #ff007f;
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
+            height: 110px; /* ★スマホ向けに少し低さを抑える */
             flex: 1;
-            min-width: 140px;
+            min-width: 130px;
             border-radius: 8px;
             position: relative;
             overflow: hidden;
@@ -73,12 +73,12 @@
 
         .status-area {
             background-color: #0f0f1a;
-            border: 4px solid #fff;
-            height: 140px;
+            border: 3px solid #fff;
+            height: 110px; /* ★ギャルエリアと高さを統一 */
             flex: 1;
-            min-width: 140px;
+            min-width: 130px;
             border-radius: 8px;
-            padding: 10px;
+            padding: 6px 10px;
             text-align: left;
             box-sizing: border-box;
             display: flex;
@@ -88,53 +88,57 @@
 
         .ranking-area {
             background-color: #0f0f1a;
-            border: 4px solid #00ffff;
-            width: 100%;
-            height: 110px;
+            border: 3px solid #00ffff;
+            width: 100%; 
+            height: 120px; /* ★5位までしっかり入る高さに調整 */
             border-radius: 8px;
-            padding: 8px;
+            padding: 6px 12px;
             text-align: left;
             box-sizing: border-box;
             font-size: 11px;
+            margin-top: 2px;
         }
 
         .ranking-title {
             color: #00ffff;
             font-weight: bold;
             text-align: center;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
+            font-size: 12px;
             border-bottom: 1px dashed #00ffff;
         }
 
         .ranking-item {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 1px;
+            margin-bottom: 2px;
+            line-height: 1.4;
         }
 
         .status-item {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
         }
         #score { color: #fff; }
         #level { color: #00ffff; }
         #life { color: #ff2a6d; }
-        #chain { color: #fffb00; font-style: italic; min-height: 16px; font-size: 12px; }
+        #chain { color: #fffb00; font-style: italic; min-height: 14px; font-size: 11px; }
         
         @media (min-width: 768px) {
+            body { overflow-y: hidden; padding: 20px 0; }
             .main-container { flex-direction: row; max-width: 760px; }
             .sidebar { width: 240px; flex-direction: column; }
             .gal-area { height: 180px; }
             .status-area { height: 130px; }
             .ranking-area { height: 145px; }
-            canvas#gameCanvas { max-width: 480px; }
+            canvas#gameCanvas { width: 100%; max-width: 480px; }
         }
     </style>
 </head>
 <body>
 
     <h1>ギャル応援！ばくれつカブトムシ！</h1>
-    <p>【操作】画面スライド : 左右移動 ＆ 自動連射（PCは矢印・スペースも可）</p>
+    <p>【操作】画面スライド : 左右移動 ＆ 自動連射</p>
 
     <div class="main-container">
         <canvas id="gameCanvas" width="480" height="480"></canvas>
@@ -530,7 +534,6 @@ try {
         ctx.restore();
     }
 
-    // 破片のエフェクト星
     function drawStar(x, y, r) {
         ctx.fillStyle = "#ff4081"; ctx.beginPath();
         for (let i = 0; i < 5; i++) {
@@ -552,7 +555,7 @@ try {
         ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=30) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            ctx.beginPath(); moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
         }
 
         if (player.starTime > 0 || player.invincible === 0 || Math.floor(player.invincible / 4) % 2 === 0) {
