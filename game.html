@@ -118,7 +118,8 @@
             overflow: hidden;
             background-image: url('gal.png');
             background-size: cover;
-            background-position: center;
+            /* 🌟【修正】画像の上側（ギャルの顔がある部分）がPCの大きな枠でも隠れないように配置を調整 */
+            background-position: center 20%;
         }
 
         .gal-bubble {
@@ -400,7 +401,9 @@ try {
         keys[e.code] = true;
         if (isGameOver && e.code === "Space" && !isSubmitting) initGame();
     });
-    window.addEventListener("keyup", (e) => keys[e.code] = false);
+    window.addEventListener("keyup", (e) => {
+        keys[e.code] = false;
+    });
 
     const btnLeft = document.getElementById("btnLeft");
     const btnRight = document.getElementById("btnRight");
@@ -448,8 +451,12 @@ try {
             else if (rand < 0.02) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'heal' });
         }
 
-        if ((keys["ArrowLeft"] || moveLeft) && player.x > 0) player.x -= player.speed;
-        if ((keys["ArrowRight"] || moveRight) && player.x < canvas.width - player.width) player.x += player.speed;
+        if (keys["ArrowLeft"] || moveLeft) {
+            if (player.x > 0) player.x -= player.speed;
+        }
+        if (keys["ArrowRight"] || moveRight) {
+            if (player.x < canvas.width - player.width) player.x += player.speed;
+        }
 
         autoShootTimer++;
         if ((keys["Space"] || shootPressed) && bullets.length < 3 && autoShootTimer >= 11) {
@@ -578,7 +585,6 @@ try {
         ctx.fillStyle = "#fff"; ctx.fillRect(x + 6, y + 8, 4, 4); ctx.fillRect(x + w - 10, y + 8, 4, 4);
     }
 
-    // 🌟【ここを修正】ctx.stroke(); のタイポバグを完全に修正しました
     function drawShell(x, y, r, angle) {
         ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.fillStyle = "#2ecc71";
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
