@@ -17,9 +17,10 @@
             text-align: center;
             font-family: 'Courier New', Courier, monospace, sans-serif;
             margin: 0;
-            padding: 10px 0 30px 0; /* ★下部に余白を作ってスクロールしやすく */
-            overflow-y: auto;       /* ★スマホ画面からはみ出しても下にスクロールして見られるように許可 */
+            padding: 10px 0 40px 0;
+            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            touch-action: manipulation; /* 連打時のブラウザズームを防止 */
         }
         h1 { margin: 0 0 5px 0; font-size: 18px; color: #ff007f; text-shadow: 0 0 10px rgba(255,0,127,0.3); }
         p { margin: 0 0 8px 0; color: #ccc; font-size: 10px; }
@@ -40,14 +41,65 @@
             border: 4px solid #3498db;
             box-shadow: 0 0 15px rgba(52, 152, 219, 0.4);
             display: block;
-            width: 92%; /* ★少しだけ小さくしてスマホでの圧迫感を軽減 */
+            width: 92%;
             max-width: 440px;
             height: auto;
             aspect-ratio: 1 / 1;
         }
 
+        /* 📱 スマホ専用バーチャルコントローラー（PC時は自動非表示） */
+        .controller-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 92%;
+            max-width: 440px;
+            margin: 5px 0;
+            box-sizing: border-box;
+            gap: 20px;
+        }
+        .move-pads {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+        }
+        .btn {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border: 2px solid #fff;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 15px 0;
+            text-align: center;
+            box-shadow: 0 4px #1a252f;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px #1a252f;
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+        }
+        .btn-move {
+            flex: 1;
+        }
+        .btn-shoot {
+            background: linear-gradient(135deg, #ff007f, #ff5e62);
+            border: 2px solid #ff007f;
+            box-shadow: 0 4px #b30059;
+            width: 110px;
+            font-size: 18px;
+            padding: 13px 0;
+        }
+        .btn-shoot:active {
+            box-shadow: 0 2px #b30059;
+            background: linear-gradient(135deg, #ff5e62, #ff007f);
+        }
+
         .sidebar {
-            width: 92%; /* ★ゲーム画面の横幅に合わせる */
+            width: 92%;
             max-width: 440px;
             display: flex;
             flex-direction: row;
@@ -59,22 +111,19 @@
             background-color: #0f0f1a;
             border: 3px solid #ff007f;
             box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
-            height: 110px; /* ★スマホ向けに少し低さを抑える */
+            height: 110px;
             flex: 1;
             min-width: 130px;
             border-radius: 8px;
             position: relative;
             overflow: hidden;
         }
-        canvas#galCanvas {
-            width: 100%;
-            height: 100%;
-        }
+        canvas#galCanvas { width: 100%; height: 100%; }
 
         .status-area {
             background-color: #0f0f1a;
             border: 3px solid #fff;
-            height: 110px; /* ★ギャルエリアと高さを統一 */
+            height: 110px;
             flex: 1;
             min-width: 130px;
             border-radius: 8px;
@@ -90,7 +139,7 @@
             background-color: #0f0f1a;
             border: 3px solid #00ffff;
             width: 100%; 
-            height: 120px; /* ★5位までしっかり入る高さに調整 */
+            height: 120px;
             border-radius: 8px;
             padding: 6px 12px;
             text-align: left;
@@ -115,10 +164,7 @@
             line-height: 1.4;
         }
 
-        .status-item {
-            font-size: 13px;
-            font-weight: bold;
-        }
+        .status-item { font-size: 13px; font-weight: bold; }
         #score { color: #fff; }
         #level { color: #00ffff; }
         #life { color: #ff2a6d; }
@@ -127,6 +173,7 @@
         @media (min-width: 768px) {
             body { overflow-y: hidden; padding: 20px 0; }
             .main-container { flex-direction: row; max-width: 760px; }
+            .controller-area { display: none; } /* PC時はボタンを非表示に */
             .sidebar { width: 240px; flex-direction: column; }
             .gal-area { height: 180px; }
             .status-area { height: 130px; }
@@ -138,10 +185,18 @@
 <body>
 
     <h1>ギャル応援！ばくれつカブトムシ！</h1>
-    <p>【操作】画面スライド : 左右移動 ＆ 自動連射</p>
+    <p>【操作】スマホ：画面下ボタン ／ PC：左右矢印・スペースキー</p>
 
     <div class="main-container">
         <canvas id="gameCanvas" width="480" height="480"></canvas>
+
+        <div class="controller-area">
+            <div class="move-pads">
+                <div class="btn btn-move" id="btnLeft">◀ 左移動</div>
+                <div class="btn btn-move" id="btnRight">右移動 ▶</div>
+            </div>
+            <div class="btn btn-shoot" id="btnShoot">💥 弾発射</div>
+        </div>
 
         <div class="sidebar">
             <div class="gal-area">
@@ -240,7 +295,11 @@ try {
     let currentLevel = 1;
     let spawnTimer = 0;
     let isSubmitting = false;
-    let isTouching = false;
+    
+    // 操作フラグ
+    let moveLeft = false;
+    let moveRight = false;
+    let shootPressed = false;
     let autoShootTimer = 0;
 
     let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
@@ -312,11 +371,13 @@ try {
     function initGame() {
         player = { x: 223, y: 440, width: 34, height: 24, speed: 5, cooldown: false, invincible: 0, starTime: 0 };
         bullets = []; shells = []; fragments = []; items = []; scoreEffects = [];
-        score = 0; combo = 0; comboTimer = 0; lives = 3; isGameOver = false; currentLevel = 1; spawnTimer = 0; isTouching = false;
+        score = 0; combo = 0; comboTimer = 0; lives = 3; isGameOver = false; currentLevel = 1; spawnTimer = 0;
+        moveLeft = false; moveRight = false; shootPressed = false;
         gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0;
         loadRanking();
     }
 
+    // --- PC操作用イベント ---
     let keys = {};
     window.addEventListener("keydown", (e) => {
         keys[e.code] = true;
@@ -324,24 +385,23 @@ try {
     });
     window.addEventListener("keyup", (e) => keys[e.code] = false);
 
-    function handleTouch(e) {
-        if (isGameOver) return;
-        isTouching = true;
-        const rect = canvas.getBoundingClientRect();
-        const touch = e.touches[0];
-        const canvasX = ((touch.clientX - rect.left) / rect.width) * canvas.width;
-        player.x = canvasX - player.width / 2;
-        if (player.x < 0) player.x = 0;
-        if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
-    }
+    // --- 📱 スマホ専用：タッチパッドボタンイベント ---
+    const btnLeft = document.getElementById("btnLeft");
+    const btnRight = document.getElementById("btnRight");
+    const btnShoot = document.getElementById("btnShoot");
 
-    canvas.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        if (isGameOver && !isSubmitting) { initGame(); return; }
-        handleTouch(e);
+    btnLeft.addEventListener("touchstart", (e) => { e.preventDefault(); if(!isGameOver) moveLeft = true; });
+    btnLeft.addEventListener("touchend", (e) => { e.preventDefault(); moveLeft = false; });
+    
+    btnRight.addEventListener("touchstart", (e) => { e.preventDefault(); if(!isGameOver) moveRight = true; });
+    btnRight.addEventListener("touchend", (e) => { e.preventDefault(); moveRight = false; });
+
+    btnShoot.addEventListener("touchstart", (e) => { 
+        e.preventDefault(); 
+        if(isGameOver && !isSubmitting) { initGame(); return; }
+        shootPressed = true; 
     });
-    canvas.addEventListener("touchmove", (e) => { e.preventDefault(); handleTouch(e); });
-    canvas.addEventListener("touchend", () => { isTouching = false; });
+    btnShoot.addEventListener("touchend", (e) => { e.preventDefault(); shootPressed = false; });
 
     function gameLoop() {
         try { update(); draw(); } catch(e) { console.error("Loop Error:", e); }
@@ -372,11 +432,13 @@ try {
             else if (rand < 0.02) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'heal' });
         }
 
-        if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
-        if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
+        // 移動処理（PCのキーボード OR スマホのボタン長押し）
+        if ((keys["ArrowLeft"] || moveLeft) && player.x > 0) player.x -= player.speed;
+        if ((keys["ArrowRight"] || moveRight) && player.x < canvas.width - player.width) player.x += player.speed;
 
+        // ショット処理（PCのスペースキー OR スマホの弾発射ボタン長押し）
         autoShootTimer++;
-        if ((isTouching || keys["Space"]) && bullets.length < 3 && autoShootTimer >= 11) {
+        if ((keys["Space"] || shootPressed) && bullets.length < 3 && autoShootTimer >= 11) {
             bullets.push({ x: player.x + player.width / 2, y: player.y, radius: 5, speed: 8 });
             playSound('shoot');
             autoShootTimer = 0;
@@ -447,7 +509,7 @@ try {
     function playerHit() {
         player.invincible = 90; lives--; playSound('damage');
         if (lives <= 0) {
-            isGameOver = true; player.invincible = 99999; isTouching = false;
+            isGameOver = true; player.invincible = 99999; moveLeft = false; moveRight = false; shootPressed = false;
             for (let i = GAMEOVER_GAL_TALK.length - 1; i >= 0; i--) {
                 if (score >= GAMEOVER_GAL_TALK[i].minScore) { gal.text = GAMEOVER_GAL_TALK[i].text; break; }
             }
@@ -555,7 +617,7 @@ try {
         ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=30) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-            ctx.beginPath(); moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
         }
 
         if (player.starTime > 0 || player.invincible === 0 || Math.floor(player.invincible / 4) % 2 === 0) {
@@ -582,7 +644,7 @@ try {
             ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
             ctx.fillStyle = "#fff"; ctx.font = "18px sans-serif";
             ctx.fillText(`FINAL SCORE: ${score}`, canvas.width / 2, canvas.height / 2 + 25);
-            ctx.font = "14px sans-serif"; ctx.fillText(isSubmitting ? "スコア送信中..." : "Tap / Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 65);
+            ctx.font = "14px sans-serif"; ctx.fillText(isSubmitting ? "スコア送信中..." : "Tap SHOOT or Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 65);
             ctx.textAlign = "left";
         }
         drawGalRoom();
