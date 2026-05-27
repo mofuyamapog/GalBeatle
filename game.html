@@ -451,7 +451,6 @@ try {
         { minScore: 20000000, text: "2千万とか覇王！結婚してッ！" }
     ];
 
-    // 🌟 24時間ランキングフィルタリングロジックの統合
     function renderRanking() {
         rankingListEl.innerHTML = "";
         if (!rawRankingData || rawRankingData.length === 0) {
@@ -473,7 +472,6 @@ try {
                 return isNaN(itemTime) ? true : itemTime >= oneWeekAgo;
             });
         } else if (currentRankTab === "day") {
-            // 24時間：現在時刻から24時間（24 * 60 * 60 * 1000 ミリ秒）以内をフィルタ
             const oneDayAgo = nowTime - (24 * 60 * 60 * 1000);
             filteredData = rawRankingData.filter(item => {
                 const dateStr = item.timestamp || item.date;
@@ -511,19 +509,40 @@ try {
         try {
             if(!GAS_URL || isSubmitting) return;
             isSubmitting = true;
+            
             const nowISO = new Date().toISOString();
             const payload = { name: playerName, score: score, timestamp: nowISO, date: nowISO };
+            
+            let isTimeout = false;
+            const timerId = setTimeout(() => {
+                isTimeout = true;
+                isSubmitting = false;
+                const statusItem = document.querySelector(".is-submitting-text");
+                if (statusItem) statusItem.innerText = "送信タイムアウト(リロードしてね)";
+                loadRanking();
+            }, 5000);
+
             fetch(GAS_URL, {
                 method: "POST", mode: "no-cors", 
                 body: JSON.stringify(payload),
                 headers: { "Content-Type": "text/plain" }
             })
-            .then(() => { setTimeout(() => { isSubmitting = false; loadRanking(); }, 1500); })
-            .catch(err => { isSubmitting = false; loadRanking(); });
+            .then(() => { 
+                if (!isTimeout) {
+                    clearTimeout(timerId);
+                    setTimeout(() => { isSubmitting = false; loadRanking(); }, 1500); 
+                }
+            })
+            .catch(err => { 
+                if (!isTimeout) {
+                    clearTimeout(timerId);
+                    isSubmitting = false; 
+                    loadRanking(); 
+                }
+            });
         } catch(e) { isSubmitting = false; }
     }
 
-    // タブ切り替え制御
     tabAllBtn.addEventListener("click", () => {
         tabAllBtn.classList.add("active");
         tabWeekBtn.classList.remove("active");
@@ -661,10 +680,13 @@ try {
         spawnTimer++;
         if (spawnTimer >= config.spawnRate) {
             spawnTimer = 0;
+            let generatedVy = Math.random() * (config.speedMax - config.speedMin) + config.speedMin;
+            let finalVy = Math.min(3.2, generatedVy);
+
             shells.push({
                 x: Math.random() * (canvas.width - 40) + 20, y: -20,
                 vx: (Math.random() - 0.5) * 2,
-                vy: Math.random() * (config.speedMax - config.speedMin) + config.speedMin,
+                vy: finalVy,
                 radius: 16, angle: Math.random() * Math.PI
             });
             let rand = Math.random();
@@ -719,14 +741,16 @@ try {
 
         bullets.forEach((b, bi) => {
             shells.forEach((s, si) => {
-                if (Math.hypot(b.x - s.x, b.y - s.y) < b.radius + s.radius) {
+                // 🌟修正：甲羅が画面内（y >= 0）の時のみ衝突判定を行う
+                if (s.y >= 0 && Math.hypot(b.x - s.x, b.y - s.y) < b.radius + s.radius) {
                     bullets.splice(bi, 1); triggerExplosion(s.x, s.y, false); shells.splice(si, 1);
                 }
             });
         });
         fragments.forEach((f) => {
             shells.forEach((s, si) => {
-                if (Math.hypot(f.x - s.x, f.y - s.y) < f.radius + s.radius) {
+                // 🌟修正：甲羅が画面内（y >= 0）の時のみ衝突判定を行う
+                if (s.y >= 0 && Math.hypot(f.x - s.x, f.y - s.y) < f.radius + s.radius) {
                     triggerExplosion(s.x, s.y, true); shells.splice(si, 1);
                 }
             });
@@ -759,7 +783,8 @@ try {
             });
         }
 
-        scoreEl.innerText = score; levelEl.innerText = currentLevel;
+        scoreEl.innerText = score.toLocaleString(); 
+        levelEl.innerText = currentLevel;
         lifeEl.innerText = "♥".repeat(Math.max(0, lives));
         chainEl.innerText = combo > 1 ? `${combo} CHAIN!!` : "";
     }
@@ -810,7 +835,7 @@ try {
             galSpeech.innerText = gal.text;
             if(GAS_URL && !GAS_URL.includes("ここに")) {
                 setTimeout(() => {
-                    let name = prompt(`ゲームオーバー！スコア: ${score}点\nランキングに登録する名前を入力してね:`, "カブト主");
+                    let name = prompt(`ゲームオーバー！スコア: ${score.toLocaleString()}点\nランキングに登録する名前を入力してね:`, "カブト主");
                     if(!name || name.trim() === "") name = "匿名";
                     sendScore(name.substring(0, 10));
                 }, 500);
@@ -986,8 +1011,9 @@ try {
             ctx.fillStyle = "#ff007f"; ctx.font = "bold 40px sans-serif"; ctx.textAlign = "center";
             ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
             ctx.fillStyle = "#fff"; ctx.font = "18px sans-serif";
-            ctx.fillText(`FINAL SCORE: ${score}`, canvas.width / 2, canvas.height / 2 + 25);
-            ctx.font = "14px sans-serif"; ctx.fillText(isSubmitting ? "スコア送信中..." : "Tap SHOOT or Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 65);
+            ctx.fillText(`FINAL SCORE: ${score.toLocaleString()}`, canvas.width / 2, canvas.height / 2 + 25);
+            ctx.font = "14px sans-serif"; 
+            ctx.fillText(isSubmitting ? "スコア送信中..." : "Tap SHOOT or Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 65);
             ctx.textAlign = "left";
         }
         
