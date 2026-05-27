@@ -541,6 +541,7 @@ try {
     }
 
     function update() {
+        // 🌟修正点1: 完全にタイマー時止め分岐の記述を除去
         if (isGameOver) return;
         if (player.invincible > 0) player.invincible--;
         if (player.starTime > 0) player.starTime--;
@@ -709,6 +710,7 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
+            // 🌟修正点2: 25コンボ時の時止めフラグセット処理を完全に消去
             if (combo === 25) {
                 gal.text = "25コンボ超ヤバいッ！！💖";
                 galSpeech.innerText = gal.text;
@@ -742,6 +744,8 @@ try {
         if (window.innerWidth < 768) return;
         galCtx.clearRect(0, 0, galCanvas.width, galCanvas.height);
         
+        // 🌟修正点3: PC版の描画時に割り込んでいた文字カットイン・背景塗りつぶし処理を完全消去
+
         galCtx.strokeStyle = "#251225"; galCtx.lineWidth = 1;
         for(let i=0; i<galCanvas.width; i+=20) {
             galCtx.beginPath(); galCtx.moveTo(i, 0); galCtx.lineTo(i, galCanvas.height); galCtx.stroke();
@@ -834,6 +838,8 @@ try {
         });
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
+        
+        // 🌟修正点4: メインCanvas描画内の文字カットインおよび時止め背景フラッシュ描画の記述を完全除去
 
         scoreEffects.forEach(eff => {
             ctx.fillStyle = eff.color; ctx.font = eff.text.includes("BONUS") || eff.text.includes("+") && parseInt(eff.text) > 100 ? "bold 24px sans-serif" : "bold 14px sans-serif";
