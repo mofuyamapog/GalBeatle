@@ -34,38 +34,6 @@
             margin: 0 auto;
             width: 100%;
             max-width: 480px;
-            position: relative;
-        }
-
-        /* 🎬 応援カットイン画像の設定 */
-        .cutin-overlay {
-            display: none;
-            position: absolute;
-            top: 0; left: 0;
-            width: 92%;
-            max-width: 440px;
-            height: auto;
-            aspect-ratio: 1 / 1;
-            background-color: rgba(255, 0, 127, 0.4);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
-            border-radius: 8px;
-            box-sizing: border-box;
-        }
-        .cutin-image {
-            width: 80%;
-            height: auto;
-            border: 4px solid #fff;
-            border-radius: 12px;
-            box-shadow: 0 0 25px #ff007f;
-            object-fit: contain;
-            animation: popIn 0.15s ease-out forwards;
-        }
-        @keyframes popIn {
-            0% { transform: scale(0.6); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
         }
 
         canvas#gameCanvas {
@@ -276,10 +244,6 @@
     <p>【操作】スマホ：下部ボタン ／ PC：左右矢印・スペース・【Cキー】で召喚</p>
 
     <div class="main-container">
-        <div class="cutin-overlay" id="cutInOverlay">
-            <img src="gal_happy.png" class="cutin-image" id="cutInImg">
-        </div>
-
         <canvas id="gameCanvas" width="480" height="480"></canvas>
 
         <div class="controller-area">
@@ -321,7 +285,6 @@ try {
     const galCanvas = document.getElementById("galCanvas");
     const galCtx = galCanvas.getContext("2d");
     const galSpeech = document.getElementById("galSpeech");
-    const cutInOverlay = document.getElementById("cutInOverlay");
     const btnSummon = document.getElementById("btnSummon");
 
     const scoreEl = document.getElementById("score");
@@ -408,7 +371,7 @@ try {
     let totalChainCount = 0;
     let nextSummonChain = 50;
     let summonStocks = 0;
-    let cutInTimer = 0;
+    let cutInTimer = 0; // 🌟 完全に安全な、内部プログラムだけの1秒タイマー
     let flashTimer = 0;
 
     let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120, isHappy: false };
@@ -485,7 +448,6 @@ try {
         totalChainCount = 0; nextSummonChain = 50; summonStocks = 0; cutInTimer = 0; flashTimer = 0;
         gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0; gal.isHappy = false;
         galSpeech.innerText = gal.text;
-        cutInOverlay.style.display = "none";
         updateSummonButton();
         loadRanking();
     }
@@ -554,11 +516,10 @@ try {
     }
 
     function update() {
-        // 🌟【大修正】前回のクラッシュの原因だったタイポ「style.style」を完全に削除・修復しました
+        // 🌟【改善】時が止まるカウントダウン。100%バグらない安全な内部タイマー構造
         if (cutInTimer > 0) {
             cutInTimer--;
             if (cutInTimer <= 0) {
-                cutInOverlay.style.display = "none"; 
                 gal.isHappy = false;
                 gal.text = "25コンボ超サイコー！💖";
                 galSpeech.innerText = gal.text;
@@ -736,14 +697,11 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
+            // 🌟 25コンボ達成！キャンバス内テキストカットインをセット
             if (combo === 25) {
-                cutInTimer = 60;
+                cutInTimer = 60; // 1秒停止
                 gal.isHappy = true;
                 shootPressed = false; moveLeft = false; moveRight = false; 
-                
-                if (window.innerWidth < 768) {
-                    cutInOverlay.style.display = "flex"; 
-                }
                 playSound('star');
             }
 
@@ -810,7 +768,7 @@ try {
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -10, 20, 5);
         galCtx.fillStyle = "#3498db"; galCtx.fillRect(-12, -5, 24, 10);
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-7, 5, 5, 15); galCtx.fillRect(2, 5, 5, 15);
-        galCtx.fillStyle = "#ffffff"; galCtx.fillRect(-9, 12, 8, 12); galCtx.fillRect(1, 12, 8, 12);
+        galCtx.ffffff = "#ffffff"; galCtx.fillRect(-9, 12, 8, 12); galCtx.fillRect(1, 12, 8, 12);
 
         galCtx.fillStyle = "#ffffff"; galCtx.strokeStyle = "#ff007f"; galCtx.lineWidth = 2;
         galCtx.fillRect(-105, -78, 210, 26); galCtx.strokeRect(-105, -78, 210, 26);
@@ -893,11 +851,18 @@ try {
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
         
+        // 🌟【文字カットイン】時間停止中、キャンバス内に100%安全にド派手文字エフェクトを描画！
         if (cutInTimer > 0) {
+            ctx.fillStyle = "rgba(255, 0, 127, 0.3)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
             ctx.fillStyle = "#ff007f";
-            ctx.font = "bold 26px sans-serif";
+            ctx.font = "bold 32px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("✨ 25 CHAIN BONUS!! ✨", canvas.width / 2, canvas.height / 2);
+            ctx.fillText("✨ 25 CHAIN !! ✨", canvas.width / 2, canvas.height / 2 - 15);
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 20px sans-serif";
+            ctx.fillText("GAL MAX HAPPY!!", canvas.width / 2, canvas.height / 2 + 25);
             ctx.textAlign = "left";
         }
 
