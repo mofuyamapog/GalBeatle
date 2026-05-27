@@ -376,23 +376,23 @@ try {
     let summonStocks = 0;
     let flashTimer = 0;
     
-    // 🌟 修正: チェインガチャの必要量管理変数
-    let nextSummonChain = 10;      // 次にストックが増える累積チェイン目標値
-    let currentRequiredCost = 10;  // 現在のステップでの必要チェイン数（10, 20, 30 ... 最大100）
+    let nextSummonChain = 10;
+    let currentRequiredCost = 10;
 
     let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
 
+    // 🌟 改善点3: 物量難易度に調整（speedMaxの急上昇を抑え、spawnRateを後半で大幅に過密化）
     const LEVEL_TABLE = [
-        { maxScore: 5000,    spawnRate: 60, speedMin: 0.5, speedMax: 1.5 },
-        { maxScore: 30000,   spawnRate: 52, speedMin: 0.7, speedMax: 1.8 },
-        { maxScore: 100000,  spawnRate: 45, speedMin: 0.9, speedMax: 2.1 },
-        { maxScore: 300000,  spawnRate: 38, speedMin: 1.2, speedMax: 2.4 },
-        { maxScore: 500000,  spawnRate: 32, speedMin: 1.5, speedMax: 2.8 },
-        { maxScore: 1000000, spawnRate: 26, speedMin: 1.8, speedMax: 3.2 },
-        { maxScore: 2000000, spawnRate: 20, speedMin: 2.2, speedMax: 3.6 },
-        { maxScore: 3500000, spawnRate: 16, speedMin: 2.6, speedMax: 4.2 },
-        { maxScore: 5000000, spawnRate: 13, speedMin: 3.0, speedMax: 4.8 },
-        { maxScore: Infinity,spawnRate: 10, speedMin: 3.5, speedMax: 5.5 }
+        { maxScore: 5000,    spawnRate: 60, speedMin: 0.5, speedMax: 1.3 },
+        { maxScore: 30000,   spawnRate: 48, speedMin: 0.7, speedMax: 1.5 },
+        { maxScore: 100000,  spawnRate: 38, speedMin: 0.8, speedMax: 1.7 },
+        { maxScore: 300000,  spawnRate: 30, speedMin: 0.9, speedMax: 1.9 },
+        { maxScore: 500000,  spawnRate: 24, speedMin: 1.0, speedMax: 2.1 },
+        { maxScore: 1000000, spawnRate: 18, speedMin: 1.1, speedMax: 2.3 },
+        { maxScore: 2000000, spawnRate: 14, speedMin: 1.2, speedMax: 2.5 },
+        { maxScore: 3500000, spawnRate: 11, speedMin: 1.3, speedMax: 2.7 },
+        { maxScore: 5000000, spawnRate: 8,  speedMin: 1.4, speedMax: 2.9 },
+        { maxScore: Infinity,spawnRate: 6,  speedMin: 1.5, speedMax: 3.2 }
     ];
 
     const GAMEOVER_GAL_TALK = [
@@ -466,7 +466,6 @@ try {
         moveLeft = false; moveRight = false; shootPressed = false;
         totalChainCount = 0; summonStocks = 0; flashTimer = 0;
         
-        // 🌟 修正: ガチャ初期値リセット
         nextSummonChain = 10;
         currentRequiredCost = 10;
 
@@ -492,7 +491,6 @@ try {
     }
 
     function updateSummonButton() {
-        // 🌟 修正: 現在の変動するステップ幅（currentRequiredCost）に基づいてパーセントを正しく計算
         let base = nextSummonChain - currentRequiredCost;
         let currentProgress = totalChainCount - base;
         let percent = summonStocks >= 2 ? 100 : Math.min(100, Math.max(0, Math.floor((currentProgress / currentRequiredCost) * 100)));
@@ -511,7 +509,6 @@ try {
         if (summonStocks >= 2) {
             btnSummon.innerText = `🎁 召喚ストックMAX!! (2/2)`;
         } else {
-            // 次のロック解除までの残り、または必要な目標値を提示
             btnSummon.innerText = `🎁 アイテム召喚！ [ストック: ${summonStocks}/2] (${percent}%)`;
         }
     }
@@ -569,9 +566,17 @@ try {
                 radius: 16, angle: Math.random() * Math.PI
             });
             let rand = Math.random();
-            if (rand < 0.01) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'star' });
-            else if (rand < 0.02) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'heal' });
-            else if (rand < 0.025) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'bomb' });
+            if (rand < 0.01) {
+                items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'star' });
+            } else if (rand < 0.02) {
+                items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'heal' });
+            } else if (rand < 0.025) {
+                items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'bomb' });
+                // 💬 褒め要素: ボム出現・獲得予定時のセリフ
+                gal.text = "ボムGET！一気にイっちゃって！";
+                galSpeech.innerText = gal.text;
+                gal.textTimer = 120;
+            }
         }
 
         if (keys["ArrowLeft"] || moveLeft) { if (player.x > 0) player.x -= player.speed; }
@@ -635,6 +640,8 @@ try {
                     player.starTime = 300; playSound('star'); gal.text = "無敵スターキタ！"; gal.jumpSpeed = -6; 
                 } else if (item.type === 'heal') { 
                     lives++; playSound('heal'); gal.text = "ないす回復〜！"; gal.jumpSpeed = -4; 
+                    // 🌟 改善点: ピンチを脱出したのでセリフ書き換え
+                    if (lives > 1) { gal.text = "ふぅー、生き返った〜！"; }
                 } else if (item.type === 'bomb') { 
                     executeBomb();
                 }
@@ -661,7 +668,11 @@ try {
         playSound('bomb_exec');
         flashTimer = 15;
         player.starTime = 300;
-        gal.text = "ばくれつボム最強ッ！！";
+        
+        // 💬 褒め要素: ボム使用時の全滅セリフ
+        gal.text = "画面全滅マジ最高ーー！✨";
+        galSpeech.innerText = gal.text;
+        gal.textTimer = 150;
         
         if (shells.length > 0) {
             shells.forEach(s => {
@@ -677,15 +688,16 @@ try {
             shells = [];
             checkSummonUnlock();
         }
+        
+        // 🌟 改善点1: ボム発動直後にコンボタイマーを強制延長し、チェインが途切れないように猶予を与える
+        comboTimer = 180;
     }
 
     function checkSummonUnlock() {
-        // 🌟 修正: ループ処理で蓄積したチェインを一括判定し、必要量を10ずつ増加（最大100）させるロジック
         while (totalChainCount >= nextSummonChain) {
             if (summonStocks < 2) {
                 summonStocks++;
             }
-            // 次のステップのコストを計算 (+10し、最大100でカンスト)
             currentRequiredCost = Math.min(100, currentRequiredCost + 10);
             nextSummonChain += currentRequiredCost;
         }
@@ -708,8 +720,14 @@ try {
                 }, 500);
             }
         } else {
-            gal.text = "ちょ、ウケる頑ば！"; gal.textTimer = 90;
+            // 💬 褒め要素: ライフ1の時のピンチ応援セリフ
+            if (lives === 1) {
+                gal.text = "ラスト1機！うちがパワー送るッ！";
+            } else {
+                gal.text = "ちょ、ウケる頑ば！";
+            }
             galSpeech.innerText = gal.text;
+            gal.textTimer = 100;
         }
     }
 
@@ -719,24 +737,21 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
-            if (combo === 25) {
-                gal.text = "25コンボ超ヤバいッ！！💖";
-                galSpeech.innerText = gal.text;
-                gal.textTimer = 120;
-            }
-
-            if (combo % 10 === 0 && combo !== 20) {
-                score += 5; playSound('bonus');
-                scoreEffects.push({ x: canvas.width / 2, y: canvas.height / 2, text: "+5 BONUS!", life: 60, color: "#ffff00" });
-                gal.jumpSpeed = -5.5;
-                if (combo === 10) gal.text = "コンボ異次元！";
-                if (combo >= 30) gal.text = "まじスコア爆発っ";
-                galSpeech.innerText = gal.text;
-                gal.textTimer = 120;
-            } else if (combo === 3 && gal.textTimer <= 0) {
+            // 💬 褒め要素: 各チェイン段階での細分化された応援セリフ群
+            if (combo === 3 && gal.textTimer <= 0) {
                 gal.text = "ヤバッ！"; galSpeech.innerText = gal.text; gal.textTimer = 90;
             } else if (combo === 6) {
                 gal.text = "天才すぎん？"; galSpeech.innerText = gal.text; gal.textTimer = 90;
+            } else if (combo === 10) {
+                gal.text = "コンボ異次元！"; galSpeech.innerText = gal.text; gal.textTimer = 120;
+            } else if (combo === 15) {
+                gal.text = "まって15連とかガチプロ？w"; galSpeech.innerText = gal.text; gal.textTimer = 120;
+            } else if (combo === 25) {
+                gal.text = "25コンボ超ヤバいッ！！💖"; galSpeech.innerText = gal.text; gal.textTimer = 140;
+            } else if (combo === 30) {
+                gal.text = "30コンボは脳汁ドバドバ案件ッ！"; galSpeech.innerText = gal.text; gal.textTimer = 120;
+            } else if (combo === 50) {
+                gal.text = "50チェイン！神すぎて尊い…🙏"; galSpeech.innerText = gal.text; gal.textTimer = 150;
             }
         } else { combo = 1; playSound('hit'); }
         comboTimer = 90;
@@ -816,7 +831,7 @@ try {
     function drawBombItem(x, y, r) {
         ctx.save(); ctx.translate(x, y); ctx.rotate(Date.now() / 200);
         ctx.fillStyle = "#ff00ff"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
         ctx.fillText("B", 0, 4); ctx.restore();
     }
@@ -853,6 +868,13 @@ try {
         if (flashTimer > 0) {
             ctx.fillStyle = `rgba(255, 255, 255, ${flashTimer / 15})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 🌟 改善点2: コンボゲージの視覚化（Canvasの最上部にネオンピンクのバーを描画）
+        if (combo > 0 && comboTimer > 0) {
+            let barWidth = (comboTimer / 90) * canvas.width;
+            ctx.fillStyle = "#ff007f";
+            ctx.fillRect(0, 0, barWidth, 5); // 上端に厚さ5pxのタイムバーを配置
         }
 
         if (isGameOver) {
