@@ -101,7 +101,6 @@
             background: linear-gradient(135deg, #ff5e62, #ff007f);
         }
 
-        /* 📊 リアルタイムネオンゲージボタン */
         .btn-summon {
             background-color: #222233;
             background-image: linear-gradient(to right, #222233 0%, #222233 100%);
@@ -226,7 +225,6 @@
         #life { color: #ff2a6d; }
         #chain { color: #fffb00; font-style: italic; min-height: 14px; font-size: 11px; }
         
-        /* 💻 PC大画面用のレスポンシブ設定 */
         @media (min-width: 768px) {
             body { overflow-y: hidden; padding: 20px 0; }
             .main-container { flex-direction: row; max-width: 760px; }
@@ -488,7 +486,7 @@ try {
 
     function updateSummonButton() {
         let base = nextSummonChain === 50 ? 0 : nextSummonChain - 100;
-        let currentProgress = totalChainCount - base; // 🌟【修正完了】エラーの原因だった重複代入を完全に直しました！
+        let currentProgress = totalChainCount - base; // 🌟修正点1: 重複代入バグの解消
         let required = nextSummonChain === 50 ? 50 : 100;
         
         let percent = summonStocks >= 2 ? 100 : Math.min(100, Math.max(0, Math.floor((currentProgress / required) * 100)));
@@ -723,7 +721,7 @@ try {
             checkSummonUnlock();
 
             if (combo === 25) {
-                cutInTimer = 60; // 1秒時間停止
+                cutInTimer = 60; 
                 shootPressed = false; moveLeft = false; moveRight = false; 
                 playSound('star');
             }
@@ -785,7 +783,8 @@ try {
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -10, 20, 5);
         galCtx.fillStyle = "#3498db"; galCtx.fillRect(-12, -5, 24, 10);
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-7, 5, 5, 15); galCtx.fillRect(2, 5, 5, 15);
-        ctx.fillStyle = "#ffffff"; galCtx.fillRect(-9, 12, 8, 12); galCtx.fillRect(1, 12, 8, 12);
+        galCtx.fillStyle = "#ffffff"; // 🌟修正点3: タイポ（ctx.ffffff）の修正
+        galCtx.fillRect(-9, 12, 8, 12); galCtx.fillRect(1, 12, 8, 12);
 
         galCtx.fillStyle = "#ffffff"; galCtx.strokeStyle = "#ff007f"; galCtx.lineWidth = 2;
         galCtx.fillRect(-105, -78, 210, 26); galCtx.strokeRect(-105, -78, 210, 26);
@@ -842,7 +841,7 @@ try {
         ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=30) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); 
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); // 🌟修正点2: タイポ（stroke()）の修正
         }
 
         if (player.starTime > 0 || player.invincible === 0 || Math.floor(player.invincible / 4) % 2 === 0) {
@@ -860,7 +859,6 @@ try {
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
         
-        // 🌟 キャンバス内テキストカットイン（安全時止め）
         if (cutInTimer > 0) {
             ctx.fillStyle = "rgba(255, 0, 127, 0.3)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
