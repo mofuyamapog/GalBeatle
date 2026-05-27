@@ -373,9 +373,12 @@ try {
     let autoShootTimer = 0;
 
     let totalChainCount = 0;
-    let nextSummonChain = 50;
     let summonStocks = 0;
     let flashTimer = 0;
+    
+    // 🌟 修正: チェインガチャの必要量管理変数
+    let nextSummonChain = 10;      // 次にストックが増える累積チェイン目標値
+    let currentRequiredCost = 10;  // 現在のステップでの必要チェイン数（10, 20, 30 ... 最大100）
 
     let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
 
@@ -461,7 +464,12 @@ try {
         bullets = []; shells = []; fragments = []; items = []; scoreEffects = [];
         score = 0; combo = 0; comboTimer = 0; lives = 3; isGameOver = false; currentLevel = 1; spawnTimer = 0;
         moveLeft = false; moveRight = false; shootPressed = false;
-        totalChainCount = 0; nextSummonChain = 50; summonStocks = 0; flashTimer = 0;
+        totalChainCount = 0; summonStocks = 0; flashTimer = 0;
+        
+        // 🌟 修正: ガチャ初期値リセット
+        nextSummonChain = 10;
+        currentRequiredCost = 10;
+
         gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0;
         galSpeech.innerText = gal.text;
         
@@ -484,11 +492,10 @@ try {
     }
 
     function updateSummonButton() {
-        let base = nextSummonChain === 50 ? 0 : nextSummonChain - 100;
+        // 🌟 修正: 現在の変動するステップ幅（currentRequiredCost）に基づいてパーセントを正しく計算
+        let base = nextSummonChain - currentRequiredCost;
         let currentProgress = totalChainCount - base;
-        let required = nextSummonChain === 50 ? 50 : 100;
-        
-        let percent = summonStocks >= 2 ? 100 : Math.min(100, Math.max(0, Math.floor((currentProgress / required) * 100)));
+        let percent = summonStocks >= 2 ? 100 : Math.min(100, Math.max(0, Math.floor((currentProgress / currentRequiredCost) * 100)));
 
         let bgStyle = "";
         if (summonStocks > 0) {
@@ -504,6 +511,7 @@ try {
         if (summonStocks >= 2) {
             btnSummon.innerText = `🎁 召喚ストックMAX!! (2/2)`;
         } else {
+            // 次のロック解除までの残り、または必要な目標値を提示
             btnSummon.innerText = `🎁 アイテム召喚！ [ストック: ${summonStocks}/2] (${percent}%)`;
         }
     }
@@ -541,7 +549,6 @@ try {
     }
 
     function update() {
-        // 🌟修正点1: 完全にタイマー時止め分岐の記述を除去
         if (isGameOver) return;
         if (player.invincible > 0) player.invincible--;
         if (player.starTime > 0) player.starTime--;
@@ -673,12 +680,14 @@ try {
     }
 
     function checkSummonUnlock() {
-        if (totalChainCount >= nextSummonChain) {
+        // 🌟 修正: ループ処理で蓄積したチェインを一括判定し、必要量を10ずつ増加（最大100）させるロジック
+        while (totalChainCount >= nextSummonChain) {
             if (summonStocks < 2) {
                 summonStocks++;
             }
-            if (nextSummonChain === 50) nextSummonChain = 150;
-            else nextSummonChain += 100;
+            // 次のステップのコストを計算 (+10し、最大100でカンスト)
+            currentRequiredCost = Math.min(100, currentRequiredCost + 10);
+            nextSummonChain += currentRequiredCost;
         }
         updateSummonButton();
     }
@@ -710,7 +719,6 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
-            // 🌟修正点2: 25コンボ時の時止めフラグセット処理を完全に消去
             if (combo === 25) {
                 gal.text = "25コンボ超ヤバいッ！！💖";
                 galSpeech.innerText = gal.text;
@@ -744,8 +752,6 @@ try {
         if (window.innerWidth < 768) return;
         galCtx.clearRect(0, 0, galCanvas.width, galCanvas.height);
         
-        // 🌟修正点3: PC版の描画時に割り込んでいた文字カットイン・背景塗りつぶし処理を完全消去
-
         galCtx.strokeStyle = "#251225"; galCtx.lineWidth = 1;
         for(let i=0; i<galCanvas.width; i+=20) {
             galCtx.beginPath(); galCtx.moveTo(i, 0); galCtx.lineTo(i, galCanvas.height); galCtx.stroke();
@@ -838,8 +844,6 @@ try {
         });
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
-        
-        // 🌟修正点4: メインCanvas描画内の文字カットインおよび時止め背景フラッシュ描画の記述を完全除去
 
         scoreEffects.forEach(eff => {
             ctx.fillStyle = eff.color; ctx.font = eff.text.includes("BONUS") || eff.text.includes("+") && parseInt(eff.text) > 100 ? "bold 24px sans-serif" : "bold 14px sans-serif";
