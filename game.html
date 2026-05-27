@@ -125,26 +125,28 @@
             background: linear-gradient(135deg, #ff5e62, #ff007f);
         }
 
-        /* 📊 改良版：進化型ゲージ一体化ボタン */
+        /* 📊【修正】初期状態の背景を background-image の単色グラデーションにして、JSのゲージ上書きと完全に同期させました */
         .btn-summon {
-            /* JavaScriptからパーセンテージを受け取って背景を動かすため、ベースは暗いグレー */
-            background: #222233;
+            background-color: #222233;
+            background-image: linear-gradient(to right, #222233 0%, #222233 100%);
             border: 2px solid #555566;
-            color: #888899;
+            color: #aab;
             box-shadow: none;
             padding: 11px 0;
             font-size: 13px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
             cursor: not-allowed;
-            transition: border 0.3s, color 0.3s;
             position: relative;
             overflow: hidden;
+            border-radius: 12px;
+            transition: border 0.2s;
         }
-        /* ストックが1個以上あるときのネオン点灯エフェクト */
+        
         .btn-summon.active {
             border: 2px solid #00ffff;
             color: #ffffff;
-            box-shadow: 0 4px #005580, 0 0 10px rgba(0, 255, 255, 0.3);
+            box-shadow: 0 4px #005580, 0 0 10px rgba(0, 255, 255, 0.2);
             cursor: pointer;
         }
         .btn-summon.active:active {
@@ -494,30 +496,28 @@ try {
         galSpeech.innerText = gal.text;
     }
 
-    // 📊【重要機能】ボタンを文字＆カラーゲージに更新するシステム
+    // 📊【修正】上書きトラブルを防ぐため、必ず「background-image」を書き換える命令に変更
     function updateSummonButton() {
-        // 現在の目標チェインまでの進行度を計算（％）
         let base = nextSummonChain === 50 ? 0 : nextSummonChain - 100;
         let currentProgress = totalChainCount - base;
         let required = nextSummonChain === 50 ? 50 : 100;
         
-        // ストック満タン(2個)なら強制的に100%
         let percent = summonStocks >= 2 ? 100 : Math.min(100, Math.max(0, Math.floor((currentProgress / required) * 100)));
 
-        // ゲージのグラデーション色を設定
-        // 左から指定％までは水色(#00ffff)、そこから右は暗いグレー(#222233)
-        let bgStyle = `linear-gradient(to right, #1b75bb ${percent}%, #222233 ${percent}%)`;
+        let bgStyle = "";
         if (summonStocks > 0) {
-            // ストックが1つ以上あれば、ネオンブルーに変更して視認性を高める
+            // ストック1以上：チャージ部分が明るいネオン水色、残りは濃いブルー
             bgStyle = `linear-gradient(to right, #00ffff ${percent}%, #34495e ${percent}%)`;
             btnSummon.classList.add("active");
         } else {
+            // ストック0：チャージ部分が落ち着いた紺色、残りは暗いグレー
+            bgStyle = `linear-gradient(to right, #1b75bb ${percent}%, #222233 ${percent}%)`;
             btnSummon.classList.remove("active");
         }
         
-        btnSummon.style.background = bgStyle;
+        // 🌟 最優先でブラウザへゲージを描画させる
+        btnSummon.style.backgroundImage = bgStyle;
 
-        // ボタンのテキスト表示
         if (summonStocks >= 2) {
             btnSummon.innerText = `🎁 召喚ストックMAX!! (2/2)`;
         } else {
@@ -700,7 +700,6 @@ try {
             if (nextSummonChain === 50) nextSummonChain = 150;
             else nextSummonChain += 100;
         }
-        // 📊 チェインがヒットするたびにゲージをリアルタイムに再計算して描画
         updateSummonButton();
     }
 
@@ -909,6 +908,7 @@ try {
         drawGalRoom();
     }
 
+    // 初回ボタン状態のセット
     initGame();
     gameLoop();
 } catch(e) {
