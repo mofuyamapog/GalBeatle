@@ -690,11 +690,12 @@ try {
                 radius: 16, angle: Math.random() * Math.PI
             });
             let rand = Math.random();
-            if (rand < 0.01) {
+            // 🌟 修正：すべてのアイテムの出現確率を均等に 0.5% (境界値 0.005 / 0.010 / 0.015) に統合
+            if (rand < 0.005) {
                 items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'star' });
-            } else if (rand < 0.02) {
+            } else if (rand < 0.010) {
                 items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'heal' });
-            } else if (rand < 0.025) {
+            } else if (rand < 0.015) {
                 items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'bomb' });
                 gal.text = "ボムGET！一気にイっちゃって！";
                 galSpeech.innerText = gal.text;
@@ -741,7 +742,6 @@ try {
 
         bullets.forEach((b, bi) => {
             shells.forEach((s, si) => {
-                // 🌟修正：甲羅が画面内（y >= 0）の時のみ衝突判定を行う
                 if (s.y >= 0 && Math.hypot(b.x - s.x, b.y - s.y) < b.radius + s.radius) {
                     bullets.splice(bi, 1); triggerExplosion(s.x, s.y, false); shells.splice(si, 1);
                 }
@@ -749,7 +749,6 @@ try {
         });
         fragments.forEach((f) => {
             shells.forEach((s, si) => {
-                // 🌟修正：甲羅が画面内（y >= 0）の時のみ衝突判定を行う
                 if (s.y >= 0 && Math.hypot(f.x - s.x, f.y - s.y) < f.radius + s.radius) {
                     triggerExplosion(s.x, s.y, true); shells.splice(si, 1);
                 }
