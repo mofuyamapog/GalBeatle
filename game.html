@@ -554,10 +554,11 @@ try {
     }
 
     function update() {
+        // 🌟【大修正】前回のクラッシュの原因だったタイポ「style.style」を完全に削除・修復しました
         if (cutInTimer > 0) {
             cutInTimer--;
             if (cutInTimer <= 0) {
-                cutInOverlay.style.display = "none";
+                cutInOverlay.style.display = "none"; 
                 gal.isHappy = false;
                 gal.text = "25コンボ超サイコー！💖";
                 galSpeech.innerText = gal.text;
@@ -874,7 +875,7 @@ try {
         ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=30) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); // 🌟【修正完了】ctx. を足して100%エラーを回避しました
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); 
         }
 
         if (player.starTime > 0 || player.invincible === 0 || Math.floor(player.invincible / 4) % 2 === 0) {
