@@ -34,6 +34,32 @@
             margin: 0 auto;
             width: 100%;
             max-width: 480px;
+            position: relative;
+        }
+
+        /* 🎬 応援カットイン画像の設定（初期状態は非表示） */
+        .cutin-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(255, 0, 127, 0.2);
+            z-index: 10;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+        .cutin-image {
+            width: 85%;
+            max-width: 380px;
+            height: auto;
+            border: 5px solid #ff007f;
+            border-radius: 16px;
+            box-shadow: 0 0 30px #ff007f;
+            animation: popIn 0.2s ease-out;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         canvas#gameCanvas {
@@ -47,15 +73,21 @@
             aspect-ratio: 1 / 1;
         }
 
+        /* 📱 スマホ用コントローラー領域 */
         .controller-area {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
             width: 92%;
             max-width: 440px;
             margin: 5px 0;
+            gap: 8px;
             box-sizing: border-box;
-            gap: 20px;
+        }
+        .action-pads {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
         }
         .move-pads {
             display: flex;
@@ -95,6 +127,30 @@
             background: linear-gradient(135deg, #ff5e62, #ff007f);
         }
 
+        /* 🎁 アイテム召喚ボタン（初期状態は暗い） */
+        .btn-summon {
+            background: #222;
+            border: 2px solid #555;
+            color: #777;
+            box-shadow: none;
+            padding: 10px 0;
+            font-size: 14px;
+            cursor: not-allowed;
+            transition: all 0.3s;
+        }
+        .btn-summon.active {
+            background: linear-gradient(135deg, #00ffff, #0088cc);
+            border: 2px solid #fff;
+            color: #fff;
+            box-shadow: 0 4px #005580;
+            cursor: pointer;
+            animation: pulsesummon 1s infinite alternate;
+        }
+        @keyframes pulsesummon {
+            0% { box-shadow: 0 0 5px #00ffff, 0 4px #005580; }
+            100% { box-shadow: 0 0 15px #00ffff, 0 4px #005580; }
+        }
+
         .sidebar {
             width: 92%;
             max-width: 440px;
@@ -104,7 +160,6 @@
             gap: 6px;
         }
 
-        /* 📱 スマホ用：高画質イラスト（gal.png）を表示する設定 */
         .gal-area {
             background-color: #0f0f1a;
             border: 3px solid #ff007f;
@@ -121,7 +176,6 @@
             background-position: center top;
         }
 
-        /* 📱 スマホ用のテキストフキダシ */
         .gal-bubble {
             position: absolute;
             bottom: 6px;
@@ -139,7 +193,6 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
 
-        /* 📱 スマホ時はPC用ドット絵キャンバスを隠す */
         canvas#galCanvas { display: none; }
 
         .status-area {
@@ -192,24 +245,14 @@
         #life { color: #ff2a6d; }
         #chain { color: #fffb00; font-style: italic; min-height: 14px; font-size: 11px; }
         
-        /* 💻 PC大画面時のレイアウト切り替え */
         @media (min-width: 768px) {
             body { overflow-y: hidden; padding: 20px 0; }
             .main-container { flex-direction: row; max-width: 760px; }
             .controller-area { display: none; }
             .sidebar { width: 240px; flex-direction: column; }
             
-            /* 💻 PC用：ドット絵キャンバスを大復活させる設定 */
-            canvas#galCanvas {
-                display: block;
-                width: 100%;
-                height: 100%;
-            }
-            /* 💻 PC用：スマホ用の画像背景と文字フキダシを消し去る */
-            .gal-area {
-                height: 180px;
-                background-image: none; 
-            }
+            canvas#galCanvas { display: block; width: 100%; height: 100%; }
+            .gal-area { height: 180px; background-image: none; }
             .gal-bubble { display: none; }
 
             .status-area { height: 130px; }
@@ -221,17 +264,24 @@
 <body>
 
     <h1>ギャル応援！ばくれつカブトムシ！</h1>
-    <p>【操作】スマホ：画面下ボタン ／ PC：左右矢印・スペースキー</p>
+    <p>【操作】スマホ：下部ボタン ／ PC：左右矢印・スペース・【Cキー】で召喚</p>
 
     <div class="main-container">
+        <div class="cutin-overlay" id="cutInOverlay">
+            <img src="gal_happy.png" class="cutin-image" id="cutInImg">
+        </div>
+
         <canvas id="gameCanvas" width="480" height="480"></canvas>
 
         <div class="controller-area">
-            <div class="move-pads">
-                <div class="btn btn-move" id="btnLeft">◀ 左移動</div>
-                <div class="btn btn-move" id="btnRight">右移動 ▶</div>
+            <div class="btn btn-summon" id="btnSummon">🎁 アイテム召喚！ (ストック: 0/2)</div>
+            <div class="action-pads">
+                <div class="move-pads">
+                    <div class="btn btn-move" id="btnLeft">◀ 左移動</div>
+                    <div class="btn btn-move" id="btnRight">右移動 ▶</div>
+                </div>
+                <div class="btn btn-shoot" id="btnShoot">💥 弾発射</div>
             </div>
-            <div class="btn btn-shoot" id="btnShoot">💥 弾発射</div>
         </div>
 
         <div class="sidebar">
@@ -259,10 +309,11 @@ try {
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     
-    // 💻 PCドット絵用と 📱 スマホ文字用の両方を取得
     const galCanvas = document.getElementById("galCanvas");
     const galCtx = galCanvas.getContext("2d");
     const galSpeech = document.getElementById("galSpeech");
+    const cutInOverlay = document.getElementById("cutInOverlay");
+    const btnSummon = document.getElementById("btnSummon");
 
     const scoreEl = document.getElementById("score");
     const levelEl = document.getElementById("level");
@@ -302,7 +353,7 @@ try {
                 osc.frequency.linearRampToValueAtTime(10, now + 0.3);
                 gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
                 osc.start(now); osc.stop(now + 0.3);
-            } else if (type === 'star') {
+            } else if (type === 'star' || type === 'bomb_get') {
                 osc.type = 'triangle'; osc.frequency.setValueAtTime(523.25, now);
                 osc.frequency.setValueAtTime(659.25, now + 0.08); osc.frequency.setValueAtTime(783.99, now + 0.16);
                 osc.frequency.setValueAtTime(1046.50, now + 0.24); gain.gain.setValueAtTime(0.2, now);
@@ -315,6 +366,10 @@ try {
                 osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, now);
                 osc.frequency.setValueAtTime(880.00, now + 0.08); gain.gain.setValueAtTime(0.2, now);
                 gain.gain.linearRampToValueAtTime(0, now + 0.25); osc.start(now); osc.stop(now + 0.25);
+            } else if (type === 'bomb_exec') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now);
+                osc.frequency.linearRampToValueAtTime(30, now + 0.6); gain.gain.setValueAtTime(0.6, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.6); osc.start(now); osc.stop(now + 0.6);
             }
         } catch (e) {}
     }
@@ -341,8 +396,14 @@ try {
     let shootPressed = false;
     let autoShootTimer = 0;
 
-    // 💻 ドット絵用のアニメーション座標情報も復活
-    let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
+    // 🌟 追加機能用変数
+    let totalChainCount = 0;      // 累計チェイン数
+    let nextSummonChain = 50;     // 次に召喚可能になる目標数
+    let summonStocks = 0;         // ストック数 (最大2)
+    let cutInTimer = 0;           // カットイン用の停止時間カウンター
+    let flashTimer = 0;           // ボム使用時の画面フラッシュエフェクト
+
+    let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120, isHappy: false };
 
     const LEVEL_TABLE = [
         { maxScore: 5000,    spawnRate: 60, speedMin: 0.5, speedMax: 1.5 },
@@ -413,36 +474,57 @@ try {
         bullets = []; shells = []; fragments = []; items = []; scoreEffects = [];
         score = 0; combo = 0; comboTimer = 0; lives = 3; isGameOver = false; currentLevel = 1; spawnTimer = 0;
         moveLeft = false; moveRight = false; shootPressed = false;
-        gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0;
+        totalChainCount = 0; nextSummonChain = 50; summonStocks = 0; cutInTimer = 0; flashTimer = 0;
+        gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0; gal.isHappy = false;
         galSpeech.innerText = gal.text;
+        updateSummonButton();
         loadRanking();
+    }
+
+    // 🎁 アイテム手動召喚関数
+    function triggerSummon() {
+        if (summonStocks <= 0 || isGameOver || cutInTimer > 0) return;
+        summonStocks--;
+        updateSummonButton();
+        
+        // ランダムでアイテム生成して降らせる
+        const types = ['star', 'heal', 'bomb'];
+        const chosenType = types[Math.floor(Math.random() * types.length)];
+        items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.5, radius: 12, type: chosenType });
+        
+        gal.text = "アイテム来い来いッ！"; gal.textTimer = 90; gal.jumpSpeed = -4;
+        galSpeech.innerText = gal.text;
+    }
+
+    function updateSummonButton() {
+        btnSummon.innerText = `🎁 アイテム召喚！ (ストック: ${summonStocks}/2)`;
+        if (summonStocks > 0) {
+            btnSummon.classList.add("active");
+        } else {
+            btnSummon.classList.remove("active");
+        }
     }
 
     let keys = {};
     window.addEventListener("keydown", (e) => {
         keys[e.code] = true;
         if (isGameOver && e.code === "Space" && !isSubmitting) initGame();
+        if (e.code === "KeyC") triggerSummon(); // PC版：Cキーで召喚
     });
-    window.addEventListener("keyup", (e) => {
-        keys[e.code] = false;
-    });
+    window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    const btnLeft = document.getElementById("btnLeft");
-    const btnRight = document.getElementById("btnRight");
-    const btnShoot = document.getElementById("btnShoot");
-
-    btnLeft.addEventListener("touchstart", (e) => { e.preventDefault(); if(!isGameOver) moveLeft = true; });
+    // スマホ用ボタンイベント
+    btnLeft.addEventListener("touchstart", (e) => { e.preventDefault(); if(!isGameOver && cutInTimer<=0) moveLeft = true; });
     btnLeft.addEventListener("touchend", (e) => { e.preventDefault(); moveLeft = false; });
-    
-    btnRight.addEventListener("touchstart", (e) => { e.preventDefault(); if(!isGameOver) moveRight = true; });
+    btnRight.addEventListener("touchstart", (e) => { e.preventDefault(); if(!isGameOver && cutInTimer<=0) moveRight = true; });
     btnRight.addEventListener("touchend", (e) => { e.preventDefault(); moveRight = false; });
-
     btnShoot.addEventListener("touchstart", (e) => { 
         e.preventDefault(); 
         if(isGameOver && !isSubmitting) { initGame(); return; }
-        shootPressed = true; 
+        if (cutInTimer <= 0) shootPressed = true; 
     });
     btnShoot.addEventListener("touchend", (e) => { e.preventDefault(); shootPressed = false; });
+    btnSummon.addEventListener("touchstart", (e) => { e.preventDefault(); triggerSummon(); });
 
     function gameLoop() {
         try { update(); draw(); } catch(e) { console.error("Loop Error:", e); }
@@ -450,9 +532,20 @@ try {
     }
 
     function update() {
+        // 🎬 応援カットインによる時間停止の処理
+        if (cutInTimer > 0) {
+            cutInTimer--;
+            if (cutInTimer <= 0) {
+                cutInOverlay.style.display = "none"; // カットイン非表示
+                gal.isHappy = false;
+            }
+            return; // 進行を完全に止める
+        }
+
         if (isGameOver) return;
         if (player.invincible > 0) player.invincible--;
         if (player.starTime > 0) player.starTime--;
+        if (flashTimer > 0) flashTimer--;
 
         for (let i = 0; i < LEVEL_TABLE.length; i++) {
             if (score < LEVEL_TABLE[i].maxScore) { currentLevel = i + 1; break; }
@@ -471,14 +564,11 @@ try {
             let rand = Math.random();
             if (rand < 0.01) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'star' });
             else if (rand < 0.02) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'heal' });
+            else if (rand < 0.025) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'bomb' }); // 🌟 ボム確率は他アイテムの半分
         }
 
-        if (keys["ArrowLeft"] || moveLeft) {
-            if (player.x > 0) player.x -= player.speed;
-        }
-        if (keys["ArrowRight"] || moveRight) {
-            if (player.x < canvas.width - player.width) player.x += player.speed;
-        }
+        if (keys["ArrowLeft"] || moveLeft) { if (player.x > 0) player.x -= player.speed; }
+        if (keys["ArrowRight"] || moveRight) { if (player.x < canvas.width - player.width) player.x += player.speed; }
 
         autoShootTimer++;
         if ((keys["Space"] || shootPressed) && bullets.length < 3 && autoShootTimer >= 11) {
@@ -501,7 +591,7 @@ try {
 
         if (combo > 0) { comboTimer--; if (comboTimer <= 0) combo = 0; }
         
-        // 💻 ギャルのドット絵ジャンプアニメーション
+        if (gal.makeHappy) { gal.isHappy = true; gal.makeHappy = false; }
         if (gal.jumpY < 0 || gal.jumpSpeed !== 0) {
             gal.jumpY += gal.jumpSpeed; gal.jumpSpeed += 0.4;
             if (gal.jumpY >= 0) { gal.jumpY = 0; gal.jumpSpeed = 0; }
@@ -512,6 +602,7 @@ try {
             if (gal.textTimer <= 0 && combo === 0 && player.starTime === 0) {
                 gal.text = "うちが見守ってんよ！";
                 galSpeech.innerText = gal.text;
+                gal.isHappy = false;
             }
         }
 
@@ -535,8 +626,14 @@ try {
         items.forEach((item, i) => {
             if (Math.hypot(playerCenterX - item.x, playerCenterY - item.y) < item.radius + player.width / 2) {
                 items.splice(i, 1);
-                if (item.type === 'star') { player.starTime = 300; playSound('star'); gal.text = "無敵スターキタ！"; gal.jumpSpeed = -6; } 
-                else if (item.type === 'heal') { lives++; playSound('heal'); gal.text = "ないす回復〜！"; gal.jumpSpeed = -4; }
+                if (item.type === 'star') { 
+                    player.starTime = 300; playSound('star'); gal.text = "無敵スターキタ！"; gal.jumpSpeed = -6; 
+                } else if (item.type === 'heal') { 
+                    lives++; playSound('heal'); gal.text = "ないす回復〜！"; gal.jumpSpeed = -4; 
+                } else if (item.type === 'bomb') { 
+                    // 🌟 新アイテム「ボム」獲得時の挙動
+                    executeBomb();
+                }
                 galSpeech.innerText = gal.text;
                 gal.textTimer = 120;
             }
@@ -547,7 +644,6 @@ try {
                 if (Math.hypot(playerCenterX - s.x, playerCenterY - s.y) < s.radius + player.width / 2) { playerHit(); shells.splice(si, 1); }
             });
             fragments.forEach((f, fi) => {
-                // 🌟【大バグ修正】前回クラッシュを引き起こしていたタイポ箇所を完璧に修正
                 if (Math.hypot(playerCenterX - f.x, playerCenterY - f.y) < f.radius + player.width / 2) { playerHit(); fragments.splice(fi, 1); }
             });
         }
@@ -555,6 +651,44 @@ try {
         scoreEl.innerText = score; levelEl.innerText = currentLevel;
         lifeEl.innerText = "♥".repeat(Math.max(0, lives));
         chainEl.innerText = combo > 1 ? `${combo} CHAIN!!` : "";
+    }
+
+    // 💥 ボム爆発メインシステム
+    function executeBomb() {
+        playSound('bomb_exec');
+        flashTimer = 15; // 画面を真っ白にフラッシュさせる
+        player.starTime = 300; // 5秒間無敵
+        gal.text = "ばくれつボム最強ッ！！";
+        
+        // 画面内の全甲羅を連鎖爆発
+        if (shells.length > 0) {
+            shells.forEach(s => {
+                // スコアも連続加算
+                combo++;
+                totalChainCount++;
+                let points = Math.min(Math.pow(2, combo - 1), 9999); score += points;
+                scoreEffects.push({ x: s.x, y: s.y, text: `+${points}`, life: 40, color: "#ff00ff" });
+                for (let i = 0; i < 6; i++) {
+                    let angle = (Math.PI * 2 / 6) * i;
+                    fragments.push({ x: s.x, y: s.y, vx: Math.cos(angle) * 4, vy: Math.sin(angle) * 4, radius: 4, life: 25 });
+                }
+            });
+            shells = []; // 全滅
+            checkSummonUnlock();
+        }
+    }
+
+    function checkSummonUnlock() {
+        // 🌟 アイテム召喚ストックの計算
+        if (totalChainCount >= nextSummonChain) {
+            if (summonStocks < 2) {
+                summonStocks++;
+                updateSummonButton();
+            }
+            // 初回は50、以降は100毎
+            if (nextSummonChain === 50) nextSummonChain = 150;
+            else nextSummonChain += 100;
+        }
     }
 
     function playerHit() {
@@ -580,22 +714,36 @@ try {
 
     function triggerExplosion(x, y, isChain) {
         if (isChain) {
-            combo++; playSound('combo', combo);
-            if (combo % 10 === 0) {
+            combo++; 
+            totalChainCount++; // 累計チェイン数を加算
+            checkSummonUnlock();
+
+            // 🎬 25コンボ達成時に時が止まる応援カットインを発動！
+            if (combo === 25) {
+                cutInTimer = 60; // 1秒間（60フレーム）ゲームを完全停止
+                gal.text = "25コンボ超ヤバいッ！！💖";
+                galSpeech.innerText = gal.text;
+                gal.makeHappy = true;
+                
+                // スマホ・PC共通の演出
+                if (window.innerWidth < 768) {
+                    cutInOverlay.style.display = "flex"; // スマホ版は画像をオーバーレイ表示
+                }
+                playSound('star');
+            }
+
+            if (combo % 10 === 0 && combo !== 20) { // 25コンボの波を邪魔しないよう調整
                 score += 5; playSound('bonus');
                 scoreEffects.push({ x: canvas.width / 2, y: canvas.height / 2, text: "+5 BONUS!", life: 60, color: "#ffff00" });
                 gal.jumpSpeed = -5.5;
                 if (combo === 10) gal.text = "コンボ異次元！";
-                if (combo === 20) gal.text = "画面お祭り騒ぎw";
                 if (combo >= 30) gal.text = "まじスコア爆発っ";
                 galSpeech.innerText = gal.text;
                 gal.textTimer = 120;
-            } else if (combo >= 3) {
-                gal.jumpSpeed = -5;
-                if (combo === 3 && gal.textTimer <= 0) gal.text = "ヤバッ！";
-                if (combo === 6) gal.text = "天才すぎん？";
-                galSpeech.innerText = gal.text;
-                gal.textTimer = 90;
+            } else if (combo === 3 && gal.textTimer <= 0) {
+                gal.jumpSpeed = -5; gal.text = "ヤバッ！"; galSpeech.innerText = gal.text; gal.textTimer = 90;
+            } else if (combo === 6) {
+                gal.jumpSpeed = -5; gal.text = "天才すぎん？"; galSpeech.innerText = gal.text; gal.textTimer = 90;
             }
         } else { combo = 1; playSound('hit'); }
         comboTimer = 90;
@@ -607,12 +755,23 @@ try {
         }
     }
 
-    // 💻 PC用：ドット絵ギャルを描画するシステム（完全復活）
+    // 💻 PC用ドット絵描画
     function drawGalRoom() {
-        // PC以外（スマホ画面サイズ時）は描画処理をスキップして負荷を下げる
         if (window.innerWidth < 768) return;
-        
         galCtx.clearRect(0, 0, galCanvas.width, galCanvas.height);
+        
+        // カットイン中（時間停止中）は背景をフラッシュ
+        if (cutInTimer > 0) {
+            galCtx.fillStyle = "#ff007f";
+            galCtx.fillRect(0, 0, galCanvas.width, galCanvas.height);
+            galCtx.fillStyle = "#fff";
+            galCtx.font = "bold 20px sans-serif";
+            galCtx.textAlign = "center";
+            galCtx.fillText("✨25 CHAIN BONUS!✨", galCanvas.width/2, galCanvas.height/2);
+            galCtx.textAlign = "left";
+            return;
+        }
+
         galCtx.strokeStyle = "#251225"; galCtx.lineWidth = 1;
         for(let i=0; i<galCanvas.width; i+=20) {
             galCtx.beginPath(); galCtx.moveTo(i, 0); galCtx.lineTo(i, galCanvas.height); galCtx.stroke();
@@ -622,7 +781,16 @@ try {
         galCtx.fillStyle = "#f1c40f"; galCtx.fillRect(-15, -45, 30, 35);
         galCtx.fillRect(-18, -30, 6, 30); galCtx.fillRect(12, -30, 6, 30);
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -40, 20, 20);
-        galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-6, -34, 3, 4); galCtx.fillRect(3, -34, 3, 4);
+        
+        // ＞＜の笑顔切り替え
+        if (gal.isHappy) {
+            galCtx.strokeStyle = "#ff007f"; galCtx.lineWidth = 3;
+            galCtx.beginPath(); galCtx.moveTo(-7, -34); galCtx.lineTo(-3, -31); galCtx.lineTo(-7, -28); galCtx.stroke();
+            galCtx.beginPath(); galCtx.moveTo(7, -34); galCtx.lineTo(3, -31); galCtx.lineTo(7, -28); galCtx.stroke();
+        } else {
+            galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-6, -34, 3, 4); galCtx.fillRect(3, -34, 3, 4);
+        }
+        
         galCtx.fillStyle = "#ff66b2"; galCtx.fillRect(-2, -26, 4, 2);
         galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-10, -20, 20, 10);
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -10, 20, 5);
@@ -671,8 +839,30 @@ try {
         ctx.bezierCurveTo(cx + r * 0.8, topY - r * 0.6, cx + r * 1.2, cy - r * 0.2, cx, cy + r * 0.5); ctx.fill();
     }
 
+    // 🌟 ボムアイテムの見た目（トゲトゲのついたピンクサークル）
+    function drawBombItem(x, y, r) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(Date.now() / 200);
+        ctx.fillStyle = "#ff00ff"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("B", 0, 4); ctx.restore();
+    }
+
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 🌟【出し分け】スマホ表示時は、カットイン中に通常ギャルの背景を「gal_happy.png」へ差し替え
+        if (window.innerWidth < 768) {
+            const galAreaEl = document.querySelector('.gal-area');
+            if (galAreaEl) {
+                if (gal.isHappy) {
+                    galAreaEl.style.backgroundImage = "url('gal_happy.png')";
+                } else {
+                    galAreaEl.style.backgroundImage = "url('gal.png')";
+                }
+            }
+        }
+
         ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=30) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
@@ -689,13 +879,20 @@ try {
                 let pulse = (Date.now() / 100) % 360; grad.addColorStop(0, `hsl(${pulse}, 100%, 70%)`); grad.addColorStop(1, `hsl(${(pulse+120)%360}, 100%, 40%)`);
                 ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2); ctx.fill();
             } else if (item.type === 'heal') { drawHeartShape(item.x, item.y, item.radius * 1.3); }
+            else if (item.type === 'bomb') { drawBombItem(item.x, item.y, item.radius); } // 🌟 ボム描画
         });
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
         scoreEffects.forEach(eff => {
-            ctx.fillStyle = eff.color; ctx.font = eff.text.includes("BONUS") ? "bold 24px sans-serif" : "bold 14px sans-serif";
+            ctx.fillStyle = eff.color; ctx.font = eff.text.includes("BONUS") || eff.text.includes("+") && parseInt(eff.text) > 100 ? "bold 24px sans-serif" : "bold 14px sans-serif";
             ctx.fillText(eff.text, eff.x - 40, eff.y);
         });
+
+        // ボム使用時の画面白光フラッシュ
+        if (flashTimer > 0) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${flashTimer / 15})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
         if (isGameOver) {
             ctx.fillStyle = "rgba(10, 10, 26, 0.85)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -707,14 +904,13 @@ try {
             ctx.textAlign = "left";
         }
         
-        // 💻 PC時のみドット絵ギャルを描画
         drawGalRoom();
     }
 
     initGame();
     gameLoop();
 } catch(e) {
-    document.body.innerHTML = `<div style="padding:20px;font-size:16px;"><h3>ゲーム起動エラー</h3><p>ファイルの貼り付けミスかもしれません。</p></div>`;
+    document.body.innerHTML = `<div style="padding:20px;font-size:16px;"><h3>ゲーム起動エラー</h3><p>修正コードの貼り付けミスかもしれません。</p></div>`;
 }
 </script>
 </body>
