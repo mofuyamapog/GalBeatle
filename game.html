@@ -148,7 +148,7 @@
             border-radius: 8px;
             position: relative;
             overflow: hidden;
-            background-image: url('gal.png'); /* 🌟 初期背景 */
+            background-image: url('gal.png'); /* 🌟スマホはいつものお気に入り画像で完全固定 */
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center top;
@@ -296,10 +296,6 @@ try {
 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05N1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
 
-    // 🌟【新機能】スマホの遅延対策：画像を起動時に完全に裏でロードしておく（キャッシュ化）
-    const imgCacheNormal = new Image(); imgCacheNormal.src = "gal.png";
-    const imgCacheHappy = new Image(); imgCacheHappy.src = "gal_happy.png";
-
     // --- サウンド生成システム ---
     let audioCtx = null;
     function playSound(type, comboCount = 1) {
@@ -376,10 +372,9 @@ try {
     let totalChainCount = 0;
     let nextSummonChain = 50;
     let summonStocks = 0;
-    let cutInTimer = 0;
     let flashTimer = 0;
 
-    let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120, isHappy: false };
+    let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
 
     const LEVEL_TABLE = [
         { maxScore: 5000,    spawnRate: 60, speedMin: 0.5, speedMax: 1.5 },
@@ -415,7 +410,7 @@ try {
 
     function loadRanking() {
         try {
-            if(!GAS_URL || GAS_URL.includes("ここに")) { rankingListEl.innerText = "ローローカル稼働中"; return; }
+            if(!GAS_URL || GAS_URL.includes("ここに")) { rankingListEl.innerText = "ローカル稼働中"; return; }
             fetch(GAS_URL)
             .then(res => res.json())
             .then(data => {
@@ -450,15 +445,15 @@ try {
         bullets = []; shells = []; fragments = []; items = []; scoreEffects = [];
         score = 0; combo = 0; comboTimer = 0; lives = 3; isGameOver = false; currentLevel = 1; spawnTimer = 0;
         moveLeft = false; moveRight = false; shootPressed = false;
-        totalChainCount = 0; nextSummonChain = 50; summonStocks = 0; cutInTimer = 0; flashTimer = 0;
-        gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0; gal.isHappy = false;
+        totalChainCount = 0; nextSummonChain = 50; summonStocks = 0; flashTimer = 0;
+        gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0;
         galSpeech.innerText = gal.text;
         updateSummonButton();
         loadRanking();
     }
 
     function triggerSummon() {
-        if (summonStocks <= 0 || isGameOver || cutInTimer > 0) return;
+        if (summonStocks <= 0 || isGameOver) return;
         summonStocks--;
         updateSummonButton();
         
@@ -521,17 +516,6 @@ try {
     }
 
     function update() {
-        if (cutInTimer > 0) {
-            cutInTimer--;
-            if (cutInTimer <= 0) {
-                gal.isHappy = false;
-                gal.text = "25コンボ超サイコー！💖";
-                galSpeech.innerText = gal.text;
-                gal.textTimer = 120;
-            }
-            return; 
-        }
-
         if (isGameOver) return;
         if (player.invincible > 0) player.invincible--;
         if (player.starTime > 0) player.starTime--;
@@ -591,7 +575,6 @@ try {
             if (gal.textTimer <= 0 && combo === 0 && player.starTime === 0) {
                 gal.text = "うちが見守ってんよ！";
                 galSpeech.innerText = gal.text;
-                gal.isHappy = false;
             }
         }
 
@@ -701,11 +684,11 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
+            // 🌟 25コンボ時のフキダシ応援セリフだけをキレイに抽出
             if (combo === 25) {
-                cutInTimer = 60; 
-                gal.isHappy = true;
-                shootPressed = false; moveLeft = false; moveRight = false; 
-                playSound('star');
+                gal.text = "25コンボ超ヤバいッ！！💖";
+                galSpeech.innerText = gal.text;
+                gal.textTimer = 120;
             }
 
             if (combo % 10 === 0 && combo !== 20) {
@@ -735,19 +718,6 @@ try {
         if (window.innerWidth < 768) return;
         galCtx.clearRect(0, 0, galCanvas.width, galCanvas.height);
         
-        if (cutInTimer > 0) {
-            galCtx.fillStyle = "#ff007f";
-            galCtx.fillRect(0, 0, galCanvas.width, galCanvas.height);
-            galCtx.fillStyle = "#fff";
-            galCtx.font = "bold 18px sans-serif";
-            galCtx.textAlign = "center";
-            galCtx.fillText("💖 25 CHAIN!! 💖", galCanvas.width/2, galCanvas.height/2 - 10);
-            galCtx.font = "bold 13px sans-serif";
-            galCtx.fillText("GAL MAX HAPPY!!", galCanvas.width/2, galCanvas.height/2 + 15);
-            galCtx.textAlign = "left";
-            return;
-        }
-
         galCtx.strokeStyle = "#251225"; galCtx.lineWidth = 1;
         for(let i=0; i<galCanvas.width; i+=20) {
             galCtx.beginPath(); galCtx.moveTo(i, 0); galCtx.lineTo(i, galCanvas.height); galCtx.stroke();
@@ -758,13 +728,7 @@ try {
         galCtx.fillRect(-18, -30, 6, 30); galCtx.fillRect(12, -30, 6, 30);
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -40, 20, 20);
         
-        if (gal.isHappy) {
-            galCtx.strokeStyle = "#ff007f"; galCtx.lineWidth = 3;
-            galCtx.beginPath(); galCtx.moveTo(-7, -34); galCtx.lineTo(-3, -31); galCtx.lineTo(-7, -28); galCtx.stroke();
-            galCtx.beginPath(); galCtx.moveTo(7, -34); galCtx.lineTo(3, -31); galCtx.lineTo(7, -28); galCtx.stroke();
-        } else {
-            galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-6, -34, 3, 4); galCtx.fillRect(3, -34, 3, 4);
-        }
+        galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-6, -34, 3, 4); galCtx.fillRect(3, -34, 3, 4);
         
         galCtx.fillStyle = "#ff66b2"; galCtx.fillRect(-2, -26, 4, 2);
         galCtx.fillStyle = "#ff007f"; galCtx.fillRect(-10, -20, 20, 10);
@@ -825,18 +789,6 @@ try {
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // 🌟【プリロード対応・高速画像スイッチ】裏で読み込んだ画像データを一瞬でサイドバーへ反映！
-        if (window.innerWidth < 768) {
-            const galAreaEl = document.querySelector('.gal-area');
-            if (galAreaEl) {
-                if (gal.isHappy) { 
-                    galAreaEl.style.backgroundImage = `url('${imgCacheHappy.src}')`; 
-                } else { 
-                    galAreaEl.style.backgroundImage = `url('${imgCacheNormal.src}')`; 
-                }
-            }
-        }
-
         ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=30) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
@@ -857,20 +809,6 @@ try {
         });
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
-        
-        if (cutInTimer > 0) {
-            ctx.fillStyle = "rgba(255, 0, 127, 0.3)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.fillStyle = "#ff007f";
-            ctx.font = "bold 32px sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("✨ 25 CHAIN !! ✨", canvas.width / 2, canvas.height / 2 - 15);
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 20px sans-serif";
-            ctx.fillText("GAL MAX HAPPY!!", canvas.width / 2, canvas.height / 2 + 25);
-            ctx.textAlign = "left";
-        }
 
         scoreEffects.forEach(eff => {
             ctx.fillStyle = eff.color; ctx.font = eff.text.includes("BONUS") || eff.text.includes("+") && parseInt(eff.text) > 100 ? "bold 24px sans-serif" : "bold 14px sans-serif";
