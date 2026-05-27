@@ -328,7 +328,7 @@ try {
     const tabAllBtn = document.getElementById("tabAll");
     const tabWeekBtn = document.getElementById("tabWeek");
 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05F1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05N1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
 
     // --- サウンド生成システム ---
     let audioCtx = null;
@@ -447,7 +447,6 @@ try {
         { minScore: 20000000, text: "2千万とか覇王！結婚してッ！" }
     ];
 
-    // 🌟 修正: 複数日付プロパティへの適応・および日付なしデータ存在時のセーフティフォールバック
     function renderRanking() {
         rankingListEl.innerHTML = "";
         if (!rawRankingData || rawRankingData.length === 0) {
@@ -462,23 +461,17 @@ try {
         } else if (currentRankTab === "week") {
             const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
             filteredData = rawRankingData.filter(item => {
-                // timestamp または date プロパティの検出
                 const dateStr = item.timestamp || item.date;
-                // 日付が一切入っていない初期レコードは、表示確認用セーフティとして週間にも残す
                 if (!dateStr) return true; 
                 
                 const itemTime = new Date(dateStr).getTime();
-                // 不正な日付文字列でNaNになった場合もセーフティとして残す
                 if (isNaN(itemTime)) return true; 
                 
                 return itemTime >= oneWeekAgo;
             });
         }
 
-        // 降順ソート
         filteredData.sort((a, b) => b.score - a.score);
-
-        // 明示的に上位10件を抽出
         const top10 = filteredData.slice(0, 10);
 
         top10.forEach((item, index) => {
@@ -506,7 +499,6 @@ try {
         try {
             if(!GAS_URL || isSubmitting) return;
             isSubmitting = true;
-            // 後方互換のため timestamp と date の両方をパラメータに格納して送信
             const nowISO = new Date().toISOString();
             const payload = { name: playerName, score: score, timestamp: nowISO, date: nowISO };
             fetch(GAS_URL, {
