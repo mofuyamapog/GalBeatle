@@ -37,12 +37,13 @@
             position: relative;
         }
 
+        /* 🎬 応援カットイン画像の設定 */
         .cutin-overlay {
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(255, 0, 127, 0.2);
-            z-index: 10;
+            background-color: rgba(255, 0, 127, 0.3);
+            z-index: 999; /* 🌟確実に最前面に出るように数値を最大化 */
             justify-content: center;
             align-items: center;
             pointer-events: none;
@@ -125,7 +126,6 @@
             background: linear-gradient(135deg, #ff5e62, #ff007f);
         }
 
-        /* 📊【修正】初期状態の背景を background-image の単色グラデーションにして、JSのゲージ上書きと完全に同期させました */
         .btn-summon {
             background-color: #222233;
             background-image: linear-gradient(to right, #222233 0%, #222233 100%);
@@ -479,6 +479,7 @@ try {
         totalChainCount = 0; nextSummonChain = 50; summonStocks = 0; cutInTimer = 0; flashTimer = 0;
         gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0; gal.isHappy = false;
         galSpeech.innerText = gal.text;
+        cutInOverlay.style.display = "none";
         updateSummonButton();
         loadRanking();
     }
@@ -496,7 +497,6 @@ try {
         galSpeech.innerText = gal.text;
     }
 
-    // 📊【修正】上書きトラブルを防ぐため、必ず「background-image」を書き換える命令に変更
     function updateSummonButton() {
         let base = nextSummonChain === 50 ? 0 : nextSummonChain - 100;
         let currentProgress = totalChainCount - base;
@@ -506,16 +506,13 @@ try {
 
         let bgStyle = "";
         if (summonStocks > 0) {
-            // ストック1以上：チャージ部分が明るいネオン水色、残りは濃いブルー
             bgStyle = `linear-gradient(to right, #00ffff ${percent}%, #34495e ${percent}%)`;
             btnSummon.classList.add("active");
         } else {
-            // ストック0：チャージ部分が落ち着いた紺色、残りは暗いグレー
             bgStyle = `linear-gradient(to right, #1b75bb ${percent}%, #222233 ${percent}%)`;
             btnSummon.classList.remove("active");
         }
         
-        // 🌟 最優先でブラウザへゲージを描画させる
         btnSummon.style.backgroundImage = bgStyle;
 
         if (summonStocks >= 2) {
@@ -551,13 +548,18 @@ try {
     }
 
     function update() {
+        // 🌟【最重要バグ修正】1秒間の時止めが終わったあとのクリーンアップを確実に行う
         if (cutInTimer > 0) {
             cutInTimer--;
             if (cutInTimer <= 0) {
-                cutInOverlay.style.display = "none";
-                gal.isHappy = false;
+                cutInOverlay.style.style.clearProperty ? cutInOverlay.style.removeAttribute("style") : cutInOverlay.style.display = "none";
+                cutInOverlay.style.display = "none"; // スマホ用の全画面画像を確実に隠す
+                gal.isHappy = false;                // サイドバーの画像も元に戻す
+                gal.text = "25コンボ超サイコー！💖";
+                galSpeech.innerText = gal.text;
+                gal.textTimer = 120;
             }
-            return;
+            return; // 時が止まっている間はこれ以降のゲーム処理を一切行わない
         }
 
         if (isGameOver) return;
@@ -609,7 +611,6 @@ try {
 
         if (combo > 0) { comboTimer--; if (comboTimer <= 0) combo = 0; }
         
-        if (gal.makeHappy) { gal.isHappy = true; gal.makeHappy = false; }
         if (gal.jumpY < 0 || gal.jumpSpeed !== 0) {
             gal.jumpY += gal.jumpSpeed; gal.jumpSpeed += 0.4;
             if (gal.jumpY >= 0) { gal.jumpY = 0; gal.jumpSpeed = 0; }
@@ -730,14 +731,14 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
+            // 🌟【修正】25コンボ達成！時止めカットインを完全に連動させる
             if (combo === 25) {
-                cutInTimer = 60;
-                gal.text = "25コンボ超ヤバいッ！！💖";
-                galSpeech.innerText = gal.text;
-                gal.makeHappy = true;
+                cutInTimer = 60; // 60フレーム(1秒間)ゲームをフリーズさせる
+                gal.isHappy = true;
+                shootPressed = false; moveLeft = false; moveRight = false; // 操作押しっぱなしを一瞬リセット
                 
                 if (window.innerWidth < 768) {
-                    cutInOverlay.style.display = "flex";
+                    cutInOverlay.style.display = "flex"; // スマホなら全画面に大喜び画像をドカン！
                 }
                 playSound('star');
             }
@@ -769,13 +770,16 @@ try {
         if (window.innerWidth < 768) return;
         galCtx.clearRect(0, 0, galCanvas.width, galCanvas.height);
         
+        // 🌟 PC版：時止めカットイン中のド派手な文字エフェクト演出
         if (cutInTimer > 0) {
             galCtx.fillStyle = "#ff007f";
             galCtx.fillRect(0, 0, galCanvas.width, galCanvas.height);
             galCtx.fillStyle = "#fff";
-            galCtx.font = "bold 20px sans-serif";
+            galCtx.font = "bold 18px sans-serif";
             galCtx.textAlign = "center";
-            galCtx.fillText("✨25 CHAIN BONUS!✨", galCanvas.width/2, galCanvas.height/2);
+            galCtx.fillText("💖 25 CHAIN!! 💖", galCanvas.width/2, galCanvas.height/2 - 10);
+            galCtx.font = "bold 13px sans-serif";
+            galCtx.fillText("GAL MAX HAPPY!!", galCanvas.width/2, galCanvas.height/2 + 15);
             galCtx.textAlign = "left";
             return;
         }
@@ -857,6 +861,7 @@ try {
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        // 🌟【出し分け】スマホ表示時は、カットイン中に通常ギャルの背景を「gal_happy.png」へ差し替え
         if (window.innerWidth < 768) {
             const galAreaEl = document.querySelector('.gal-area');
             if (galAreaEl) {
@@ -885,6 +890,16 @@ try {
         });
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
+        
+        // 🌟 PC用の時間停止カットイン中は、ゲーム内のエフェクト文字（+100点など）も一時停止
+        if (cutInTimer > 0) {
+            ctx.fillStyle = "#ff007f";
+            ctx.font = "bold 28px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("✨ 25 CHAIN BONUS!! ✨", canvas.width / 2, canvas.height / 2);
+            ctx.textAlign = "left";
+        }
+
         scoreEffects.forEach(eff => {
             ctx.fillStyle = eff.color; ctx.font = eff.text.includes("BONUS") || eff.text.includes("+") && parseInt(eff.text) > 100 ? "bold 24px sans-serif" : "bold 14px sans-serif";
             ctx.fillText(eff.text, eff.x - 40, eff.y);
@@ -908,7 +923,6 @@ try {
         drawGalRoom();
     }
 
-    // 初回ボタン状態のセット
     initGame();
     gameLoop();
 } catch(e) {
