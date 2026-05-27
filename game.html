@@ -190,12 +190,11 @@
             justify-content: space-around;
         }
 
-        /* 🏆 ランキングエリアのUI拡張設定 */
         .ranking-area {
             background-color: #0f0f1a;
             border: 3px solid #00ffff;
             width: 100%; 
-            height: 220px; /* TOP10表示のため縦幅を確保 */
+            height: 220px;
             border-radius: 8px;
             padding: 6px 12px;
             text-align: left;
@@ -329,7 +328,7 @@ try {
     const tabAllBtn = document.getElementById("tabAll");
     const tabWeekBtn = document.getElementById("tabWeek");
 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05N1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05F1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
 
     // --- サウンド生成システム ---
     let audioCtx = null;
@@ -411,9 +410,8 @@ try {
     let nextSummonChain = 10;
     let currentRequiredCost = 10;
 
-    // ランキングデータ一時保持用
     let rawRankingData = []; 
-    let currentRankTab = "all"; // "all" または "week"
+    let currentRankTab = "all";
 
     let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
 
@@ -449,7 +447,7 @@ try {
         { minScore: 20000000, text: "2千万とか覇王！結婚してッ！" }
     ];
 
-    // 🌟 修正: ランキングデータのフィルタリング・TOP10描画処理
+    // 🌟 修正: 複数日付プロパティへの適応・および日付なしデータ存在時のセーフティフォールバック
     function renderRanking() {
         rankingListEl.innerHTML = "";
         if (!rawRankingData || rawRankingData.length === 0) {
@@ -460,29 +458,28 @@ try {
         let filteredData = [];
 
         if (currentRankTab === "all") {
-            // 歴代：スコア順にソートしてそのまま利用
             filteredData = [...rawRankingData];
         } else if (currentRankTab === "week") {
-            // 週間：現在時刻から7日前（7 * 24 * 60 * 60 * 1000 ミリ秒）のデータを抽出
             const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
             filteredData = rawRankingData.filter(item => {
-                // GASから日付データ（dateなど）が来ていれば解析、無ければ全データを対象としてフォールバック
-                if (!item.date) return true;
-                const itemTime = new Date(item.date).getTime();
+                // timestamp または date プロパティの検出
+                const dateStr = item.timestamp || item.date;
+                // 日付が一切入っていない初期レコードは、表示確認用セーフティとして週間にも残す
+                if (!dateStr) return true; 
+                
+                const itemTime = new Date(dateStr).getTime();
+                // 不正な日付文字列でNaNになった場合もセーフティとして残す
+                if (isNaN(itemTime)) return true; 
+                
                 return itemTime >= oneWeekAgo;
             });
         }
 
-        // スコアの高い順に厳密ソート
+        // 降順ソート
         filteredData.sort((a, b) => b.score - a.score);
 
-        // 上位10名（TOP10）を切り出し
+        // 明示的に上位10件を抽出
         const top10 = filteredData.slice(0, 10);
-
-        if (top10.length === 0) {
-            rankingListEl.innerText = "一週間以内の記録はまだありません";
-            return;
-        }
 
         top10.forEach((item, index) => {
             let div = document.createElement("div");
@@ -509,8 +506,9 @@ try {
         try {
             if(!GAS_URL || isSubmitting) return;
             isSubmitting = true;
-            // 送信パラメータに日時判定用のtimestampを付与（GAS側での記録補助用）
-            const payload = { name: playerName, score: score, timestamp: new Date().toISOString() };
+            // 後方互換のため timestamp と date の両方をパラメータに格納して送信
+            const nowISO = new Date().toISOString();
+            const payload = { name: playerName, score: score, timestamp: nowISO, date: nowISO };
             fetch(GAS_URL, {
                 method: "POST", mode: "no-cors", 
                 body: JSON.stringify(payload),
@@ -521,7 +519,6 @@ try {
         } catch(e) { isSubmitting = false; }
     }
 
-    // タブボタンイベント
     tabAllBtn.addEventListener("click", () => {
         tabAllBtn.classList.add("active");
         tabWeekBtn.classList.remove("active");
