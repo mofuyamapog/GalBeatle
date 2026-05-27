@@ -101,6 +101,7 @@
             background: linear-gradient(135deg, #ff5e62, #ff007f);
         }
 
+        /* 📊 召喚ネオンゲージボタン（共通デザイン） */
         .btn-summon {
             background-color: #222233;
             background-image: linear-gradient(to right, #222233 0%, #222233 100%);
@@ -116,6 +117,8 @@
             overflow: hidden;
             border-radius: 12px;
             transition: border 0.2s;
+            width: 100%; /* 横幅いっぱいに広げる */
+            box-sizing: border-box;
         }
         
         .btn-summon.active {
@@ -148,7 +151,7 @@
             border-radius: 8px;
             position: relative;
             overflow: hidden;
-            background-image: url('gal.png'); /* 🌟スマホはいつものお気に入り画像で完全固定 */
+            background-image: url('gal.png');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center top;
@@ -223,10 +226,14 @@
         #life { color: #ff2a6d; }
         #chain { color: #fffb00; font-style: italic; min-height: 14px; font-size: 11px; }
         
+        /* 💻 PC大画面時のレイアウト調整 */
         @media (min-width: 768px) {
             body { overflow-y: hidden; padding: 20px 0; }
             .main-container { flex-direction: row; max-width: 760px; }
-            .controller-area { display: none; }
+            
+            /* 🌟 スマホ用の下部ボタン「だけ」を消すように変更（召喚ボタンの巻き添えを回避） */
+            .action-pads { display: none; } 
+            
             .sidebar { width: 240px; flex-direction: column; }
             
             canvas#galCanvas { display: block; width: 100%; height: 100%; }
@@ -242,7 +249,7 @@
 <body>
 
     <h1>ギャル応援！ばくれつカブトムシ！</h1>
-    <p>【操作】スマホ：下部ボタン ／ PC：左右矢印・スペース・【Cキー】で召喚</p>
+    <p>【操作】スマホ：下部ボタン ／ PC：左右矢印・スペース・【Cキー】か【画面右のボタンクリック】で召喚</p>
 
     <div class="main-container">
         <canvas id="gameCanvas" width="480" height="480"></canvas>
@@ -440,6 +447,22 @@ try {
         } catch(e) { isSubmitting = false; }
     }
 
+    // 🌟【新設】PC大画面のときは、右側のサイドバー（ギャルの真下）にボタンを自動引っ越しさせるスクリプト
+    function layoutSummonButtonForPC() {
+        const sidebar = document.querySelector('.sidebar');
+        const galArea = document.querySelector('.gal-area');
+        if (window.innerWidth >= 768 && sidebar && galArea) {
+            // ギャルエリアの直後にボタンを挿入
+            galArea.parentNode.insertBefore(btnSummon, galArea.nextSibling);
+        } else {
+            // スマホ表示のときは元のコントローラーエリアの先頭に戻す
+            const controllerArea = document.querySelector('.controller-area');
+            if (controllerArea) {
+                controllerArea.insertBefore(btnSummon, controllerArea.firstChild);
+            }
+        }
+    }
+
     function initGame() {
         player = { x: 223, y: 440, width: 34, height: 24, speed: 5, cooldown: false, invincible: 0, starTime: 0 };
         bullets = []; shells = []; fragments = []; items = []; scoreEffects = [];
@@ -448,6 +471,8 @@ try {
         totalChainCount = 0; nextSummonChain = 50; summonStocks = 0; flashTimer = 0;
         gal.text = "レッツばくれつ！"; gal.textTimer = 120; gal.jumpY = 0; gal.jumpSpeed = 0;
         galSpeech.innerText = gal.text;
+        
+        layoutSummonButtonForPC(); // レイアウト位置の判定を実行
         updateSummonButton();
         loadRanking();
     }
@@ -509,6 +534,10 @@ try {
     });
     btnShoot.addEventListener("touchend", (e) => { e.preventDefault(); shootPressed = false; });
     btnSummon.addEventListener("touchstart", (e) => { e.preventDefault(); triggerSummon(); });
+    btnSummon.addEventListener("click", (e) => { triggerSummon(); }); // 🌟 PCマウスクリック対応
+
+    // 画面サイズがリアルタイムに変わったときも自動で引っ越しさせる設定
+    window.addEventListener('resize', layoutSummonButtonForPC);
 
     function gameLoop() {
         try { update(); draw(); } catch(e) { console.error("Loop Error:", e); }
@@ -684,7 +713,6 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
-            // 🌟 25コンボ時のフキダシ応援セリフだけをキレイに抽出
             if (combo === 25) {
                 gal.text = "25コンボ超ヤバいッ！！💖";
                 galSpeech.innerText = gal.text;
@@ -788,7 +816,7 @@ try {
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=30) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
