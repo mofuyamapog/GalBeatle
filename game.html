@@ -190,33 +190,59 @@
             justify-content: space-around;
         }
 
+        /* 🏆 ランキングエリアのUI拡張設定 */
         .ranking-area {
             background-color: #0f0f1a;
             border: 3px solid #00ffff;
             width: 100%; 
-            height: 120px;
+            height: 220px; /* TOP10表示のため縦幅を確保 */
             border-radius: 8px;
             padding: 6px 12px;
             text-align: left;
             box-sizing: border-box;
             font-size: 11px;
             margin-top: 2px;
+            display: flex;
+            flex-direction: column;
         }
 
-        .ranking-title {
-            color: #00ffff;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 4px;
-            font-size: 12px;
+        .ranking-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 6px;
             border-bottom: 1px dashed #00ffff;
+            padding-bottom: 4px;
+        }
+
+        .rank-tab-btn {
+            background: #222233;
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            padding: 2px 10px;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .rank-tab-btn.active {
+            background: #00ffff;
+            color: #111122;
+            box-shadow: 0 0 8px #00ffff;
+        }
+
+        .ranking-list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 2px;
         }
 
         .ranking-item {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 2px;
-            line-height: 1.4;
+            margin-bottom: 3px;
+            line-height: 1.3;
         }
 
         .status-item { font-size: 13px; font-weight: bold; }
@@ -237,7 +263,7 @@
             .gal-bubble { display: none; }
 
             .status-area { height: 130px; }
-            .ranking-area { height: 145px; }
+            .ranking-area { height: 240px; }
             canvas#gameCanvas { width: 100%; max-width: 480px; }
         }
     </style>
@@ -275,8 +301,11 @@
             </div>
 
             <div class="ranking-area">
-                <div class="ranking-title">🏆 世界オンラインTOP5 🏆</div>
-                <div id="rankingList">ロード中...</div>
+                <div class="ranking-tabs">
+                    <button class="rank-tab-btn active" id="tabAll">歴代TOP10</button>
+                    <button class="rank-tab-btn" id="tabWeek">週間TOP10</button>
+                </div>
+                <div class="ranking-list-container" id="rankingList">ロード中...</div>
             </div>
         </div>
     </div>
@@ -295,7 +324,10 @@ try {
     const levelEl = document.getElementById("level");
     const lifeEl = document.getElementById("life");
     const chainEl = document.getElementById("chain");
+    
     const rankingListEl = document.getElementById("rankingList");
+    const tabAllBtn = document.getElementById("tabAll");
+    const tabWeekBtn = document.getElementById("tabWeek");
 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05N1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
 
@@ -379,9 +411,12 @@ try {
     let nextSummonChain = 10;
     let currentRequiredCost = 10;
 
+    // ランキングデータ一時保持用
+    let rawRankingData = []; 
+    let currentRankTab = "all"; // "all" または "week"
+
     let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120 };
 
-    // 🌟 改善点3: 物量難易度に調整（speedMaxの急上昇を抑え、spawnRateを後半で大幅に過密化）
     const LEVEL_TABLE = [
         { maxScore: 5000,    spawnRate: 60, speedMin: 0.5, speedMax: 1.3 },
         { maxScore: 30000,   spawnRate: 48, speedMin: 0.7, speedMax: 1.5 },
@@ -414,19 +449,57 @@ try {
         { minScore: 20000000, text: "2千万とか覇王！結婚してッ！" }
     ];
 
+    // 🌟 修正: ランキングデータのフィルタリング・TOP10描画処理
+    function renderRanking() {
+        rankingListEl.innerHTML = "";
+        if (!rawRankingData || rawRankingData.length === 0) {
+            rankingListEl.innerText = "データがありません";
+            return;
+        }
+
+        let filteredData = [];
+
+        if (currentRankTab === "all") {
+            // 歴代：スコア順にソートしてそのまま利用
+            filteredData = [...rawRankingData];
+        } else if (currentRankTab === "week") {
+            // 週間：現在時刻から7日前（7 * 24 * 60 * 60 * 1000 ミリ秒）のデータを抽出
+            const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            filteredData = rawRankingData.filter(item => {
+                // GASから日付データ（dateなど）が来ていれば解析、無ければ全データを対象としてフォールバック
+                if (!item.date) return true;
+                const itemTime = new Date(item.date).getTime();
+                return itemTime >= oneWeekAgo;
+            });
+        }
+
+        // スコアの高い順に厳密ソート
+        filteredData.sort((a, b) => b.score - a.score);
+
+        // 上位10名（TOP10）を切り出し
+        const top10 = filteredData.slice(0, 10);
+
+        if (top10.length === 0) {
+            rankingListEl.innerText = "一週間以内の記録はまだありません";
+            return;
+        }
+
+        top10.forEach((item, index) => {
+            let div = document.createElement("div");
+            div.className = "ranking-item";
+            div.innerHTML = `<span>${index + 1}位: ${item.name}</span><span>${item.score.toLocaleString()}点</span>`;
+            rankingListEl.appendChild(div);
+        });
+    }
+
     function loadRanking() {
         try {
             if(!GAS_URL || GAS_URL.includes("ここに")) { rankingListEl.innerText = "ローカル稼働中"; return; }
             fetch(GAS_URL)
             .then(res => res.json())
             .then(data => {
-                rankingListEl.innerHTML = "";
-                if(!data || data.length === 0) { rankingListEl.innerText = "ランキングはまだ空です"; return; }
-                data.forEach((item, index) => {
-                    let div = document.createElement("div"); div.className = "ranking-item";
-                    div.innerHTML = `<span>${index + 1}位: ${item.name}</span><span>${item.score.toLocaleString()}点</span>`;
-                    rankingListEl.appendChild(div);
-                });
+                rawRankingData = data || [];
+                renderRanking();
             })
             .catch(e => { rankingListEl.innerText = "オフライン稼働中"; });
         } catch(e) { rankingListEl.innerText = "オフライン稼働中"; }
@@ -436,15 +509,32 @@ try {
         try {
             if(!GAS_URL || isSubmitting) return;
             isSubmitting = true;
+            // 送信パラメータに日時判定用のtimestampを付与（GAS側での記録補助用）
+            const payload = { name: playerName, score: score, timestamp: new Date().toISOString() };
             fetch(GAS_URL, {
                 method: "POST", mode: "no-cors", 
-                body: JSON.stringify({ name: playerName, score: score }),
+                body: JSON.stringify(payload),
                 headers: { "Content-Type": "text/plain" }
             })
             .then(() => { setTimeout(() => { isSubmitting = false; loadRanking(); }, 1500); })
             .catch(err => { isSubmitting = false; loadRanking(); });
         } catch(e) { isSubmitting = false; }
     }
+
+    // タブボタンイベント
+    tabAllBtn.addEventListener("click", () => {
+        tabAllBtn.classList.add("active");
+        tabWeekBtn.classList.remove("active");
+        currentRankTab = "all";
+        renderRanking();
+    });
+
+    tabWeekBtn.addEventListener("click", () => {
+        tabWeekBtn.classList.add("active");
+        tabAllBtn.classList.remove("active");
+        currentRankTab = "week";
+        renderRanking();
+    });
 
     function layoutSummonButtonForPC() {
         const sidebar = document.querySelector('.sidebar');
@@ -572,7 +662,6 @@ try {
                 items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'heal' });
             } else if (rand < 0.025) {
                 items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, vy: 1.2, radius: 12, type: 'bomb' });
-                // 💬 褒め要素: ボム出現・獲得予定時のセリフ
                 gal.text = "ボムGET！一気にイっちゃって！";
                 galSpeech.innerText = gal.text;
                 gal.textTimer = 120;
@@ -640,7 +729,6 @@ try {
                     player.starTime = 300; playSound('star'); gal.text = "無敵スターキタ！"; gal.jumpSpeed = -6; 
                 } else if (item.type === 'heal') { 
                     lives++; playSound('heal'); gal.text = "ないす回復〜！"; gal.jumpSpeed = -4; 
-                    // 🌟 改善点: ピンチを脱出したのでセリフ書き換え
                     if (lives > 1) { gal.text = "ふぅー、生き返った〜！"; }
                 } else if (item.type === 'bomb') { 
                     executeBomb();
@@ -668,8 +756,6 @@ try {
         playSound('bomb_exec');
         flashTimer = 15;
         player.starTime = 300;
-        
-        // 💬 褒め要素: ボム使用時の全滅セリフ
         gal.text = "画面全滅マジ最高ーー！✨";
         galSpeech.innerText = gal.text;
         gal.textTimer = 150;
@@ -688,8 +774,6 @@ try {
             shells = [];
             checkSummonUnlock();
         }
-        
-        // 🌟 改善点1: ボム発動直後にコンボタイマーを強制延長し、チェインが途切れないように猶予を与える
         comboTimer = 180;
     }
 
@@ -720,7 +804,6 @@ try {
                 }, 500);
             }
         } else {
-            // 💬 褒め要素: ライフ1の時のピンチ応援セリフ
             if (lives === 1) {
                 gal.text = "ラスト1機！うちがパワー送るッ！";
             } else {
@@ -737,17 +820,26 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
-            // 💬 褒め要素: 各チェイン段階での細分化された応援セリフ群
-            if (combo === 3 && gal.textTimer <= 0) {
+            if (combo === 25) {
+                gal.text = "25コンボ超ヤバいッ！！💖";
+                galSpeech.innerText = gal.text;
+                gal.textTimer = 120;
+            }
+
+            if (combo % 10 === 0 && combo !== 20) {
+                score += 5; playSound('bonus');
+                scoreEffects.push({ x: canvas.width / 2, y: canvas.height / 2, text: "+5 BONUS!", life: 60, color: "#ffff00" });
+                gal.jumpSpeed = -5.5;
+                if (combo === 10) gal.text = "コンボ異次元！";
+                if (combo >= 30) gal.text = "まじスコア爆発っ";
+                galSpeech.innerText = gal.text;
+                gal.textTimer = 120;
+            } else if (combo === 3 && gal.textTimer <= 0) {
                 gal.text = "ヤバッ！"; galSpeech.innerText = gal.text; gal.textTimer = 90;
             } else if (combo === 6) {
                 gal.text = "天才すぎん？"; galSpeech.innerText = gal.text; gal.textTimer = 90;
-            } else if (combo === 10) {
-                gal.text = "コンボ異次元！"; galSpeech.innerText = gal.text; gal.textTimer = 120;
             } else if (combo === 15) {
                 gal.text = "まって15連とかガチプロ？w"; galSpeech.innerText = gal.text; gal.textTimer = 120;
-            } else if (combo === 25) {
-                gal.text = "25コンボ超ヤバいッ！！💖"; galSpeech.innerText = gal.text; gal.textTimer = 140;
             } else if (combo === 30) {
                 gal.text = "30コンボは脳汁ドバドバ案件ッ！"; galSpeech.innerText = gal.text; gal.textTimer = 120;
             } else if (combo === 50) {
@@ -831,7 +923,8 @@ try {
     function drawBombItem(x, y, r) {
         ctx.save(); ctx.translate(x, y); ctx.rotate(Date.now() / 200);
         ctx.fillStyle = "#ff00ff"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
-        ctx.beginPath(); arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
         ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
         ctx.fillText("B", 0, 4); ctx.restore();
     }
@@ -870,11 +963,10 @@ try {
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // 🌟 改善点2: コンボゲージの視覚化（Canvasの最上部にネオンピンクのバーを描画）
         if (combo > 0 && comboTimer > 0) {
             let barWidth = (comboTimer / 90) * canvas.width;
             ctx.fillStyle = "#ff007f";
-            ctx.fillRect(0, 0, barWidth, 5); // 上端に厚さ5pxのタイムバーを配置
+            ctx.fillRect(0, 0, barWidth, 5);
         }
 
         if (isGameOver) {
