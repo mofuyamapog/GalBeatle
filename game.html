@@ -37,7 +37,7 @@
             position: relative;
         }
 
-        /* 🎬 応援カットイン：ゲーム画面の真上に絶対に重なるようにCSSを完全修正 */
+        /* 🎬 応援カットイン画像の設定 */
         .cutin-overlay {
             display: none;
             position: absolute;
@@ -408,7 +408,7 @@ try {
     let totalChainCount = 0;
     let nextSummonChain = 50;
     let summonStocks = 0;
-    let cutInTimer = 0; // カットイン専用の「独立した1秒タイマー」
+    let cutInTimer = 0;
     let flashTimer = 0;
 
     let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120, isHappy: false };
@@ -554,17 +554,15 @@ try {
     }
 
     function update() {
-        // 🌟【大修正】ループそのものは絶対に止めず、タイマーのカウントダウンだけを最優先で処理！
         if (cutInTimer > 0) {
             cutInTimer--;
             if (cutInTimer <= 0) {
-                cutInOverlay.style.display = "none"; // 1秒経ったら100%確実に消す！
+                cutInOverlay.style.display = "none";
                 gal.isHappy = false;
                 gal.text = "25コンボ超サイコー！💖";
                 galSpeech.innerText = gal.text;
                 gal.textTimer = 120;
             }
-            // カットイン中はカブトムシや敵の移動・当たり判定処理だけをスキップ（時止め）
             return; 
         }
 
@@ -737,13 +735,11 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
-            // 🌟【バグ修正】25コンボ時に独立タイマーを起動し、操作系の押しっぱなしを安全に解除
             if (combo === 25) {
-                cutInTimer = 60; // 独立タイマーに1秒をセット
+                cutInTimer = 60;
                 gal.isHappy = true;
                 shootPressed = false; moveLeft = false; moveRight = false; 
                 
-                // スマホ版レイアウトの時だけ全画面オーバーレイを表示
                 if (window.innerWidth < 768) {
                     cutInOverlay.style.display = "flex"; 
                 }
@@ -777,7 +773,6 @@ try {
         if (window.innerWidth < 768) return;
         galCtx.clearRect(0, 0, galCanvas.width, galCanvas.height);
         
-        // PC版の時止め中演出
         if (cutInTimer > 0) {
             galCtx.fillStyle = "#ff007f";
             galCtx.fillRect(0, 0, galCanvas.width, galCanvas.height);
@@ -868,7 +863,6 @@ try {
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // スマホ用：サイドバーの画像切り替え
         if (window.innerWidth < 768) {
             const galAreaEl = document.querySelector('.gal-area');
             if (galAreaEl) {
@@ -880,7 +874,7 @@ try {
         ctx.strokeStyle = "#16162e"; ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=30) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); // 🌟【修正完了】ctx. を足して100%エラーを回避しました
         }
 
         if (player.starTime > 0 || player.invincible === 0 || Math.floor(player.invincible / 4) % 2 === 0) {
@@ -898,7 +892,6 @@ try {
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
         
-        // 🌟 PC用またはスマホ共通：時間停止中のゲーム画面内文字演出
         if (cutInTimer > 0) {
             ctx.fillStyle = "#ff007f";
             ctx.font = "bold 26px sans-serif";
