@@ -208,7 +208,7 @@
         .ranking-tabs {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 6px;
             margin-bottom: 6px;
             border-bottom: 1px dashed #00ffff;
             padding-bottom: 4px;
@@ -218,11 +218,13 @@
             background: #222233;
             border: 1px solid #00ffff;
             color: #00ffff;
-            padding: 2px 10px;
-            font-size: 10px;
+            padding: 2px 6px;
+            font-size: 9px;
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
+            flex: 1;
+            text-align: center;
         }
 
         .rank-tab-btn.active {
@@ -301,8 +303,9 @@
 
             <div class="ranking-area">
                 <div class="ranking-tabs">
-                    <button class="rank-tab-btn active" id="tabAll">歴代TOP10</button>
-                    <button class="rank-tab-btn" id="tabWeek">週間TOP10</button>
+                    <button class="rank-tab-btn active" id="tabAll">歴代</button>
+                    <button class="rank-tab-btn" id="tabWeek">週間</button>
+                    <button class="rank-tab-btn" id="tabDay">24時間</button>
                 </div>
                 <div class="ranking-list-container" id="rankingList">ロード中...</div>
             </div>
@@ -327,6 +330,7 @@ try {
     const rankingListEl = document.getElementById("rankingList");
     const tabAllBtn = document.getElementById("tabAll");
     const tabWeekBtn = document.getElementById("tabWeek");
+    const tabDayBtn = document.getElementById("tabDay");
 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05N1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
 
@@ -447,6 +451,7 @@ try {
         { minScore: 20000000, text: "2千万とか覇王！結婚してッ！" }
     ];
 
+    // 🌟 24時間ランキングフィルタリングロジックの統合
     function renderRanking() {
         rankingListEl.innerHTML = "";
         if (!rawRankingData || rawRankingData.length === 0) {
@@ -455,26 +460,30 @@ try {
         }
 
         let filteredData = [];
+        const nowTime = Date.now();
 
         if (currentRankTab === "all") {
             filteredData = [...rawRankingData];
         } else if (currentRankTab === "week") {
-            const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            const oneWeekAgo = nowTime - (7 * 24 * 60 * 60 * 1000);
             filteredData = rawRankingData.filter(item => {
                 const dateStr = item.timestamp || item.date;
                 if (!dateStr) return true; 
-                
                 const itemTime = new Date(dateStr).getTime();
-                if (isNaN(itemTime)) return true; 
-                
-                return itemTime >= oneWeekAgo;
+                return isNaN(itemTime) ? true : itemTime >= oneWeekAgo;
+            });
+        } else if (currentRankTab === "day") {
+            // 24時間：現在時刻から24時間（24 * 60 * 60 * 1000 ミリ秒）以内をフィルタ
+            const oneDayAgo = nowTime - (24 * 60 * 60 * 1000);
+            filteredData = rawRankingData.filter(item => {
+                const dateStr = item.timestamp || item.date;
+                if (!dateStr) return true;
+                const itemTime = new Date(dateStr).getTime();
+                return isNaN(itemTime) ? true : itemTime >= oneDayAgo;
             });
         }
 
-        // スコア降順に並び替え
         filteredData.sort((a, b) => b.score - a.score);
-        
-        // 上位10件を正確に抽出
         const top10 = filteredData.slice(0, 10);
 
         top10.forEach((item, index) => {
@@ -514,9 +523,11 @@ try {
         } catch(e) { isSubmitting = false; }
     }
 
+    // タブ切り替え制御
     tabAllBtn.addEventListener("click", () => {
         tabAllBtn.classList.add("active");
         tabWeekBtn.classList.remove("active");
+        tabDayBtn.classList.remove("active");
         currentRankTab = "all";
         renderRanking();
     });
@@ -524,7 +535,16 @@ try {
     tabWeekBtn.addEventListener("click", () => {
         tabWeekBtn.classList.add("active");
         tabAllBtn.classList.remove("active");
+        tabDayBtn.classList.remove("active");
         currentRankTab = "week";
+        renderRanking();
+    });
+
+    tabDayBtn.addEventListener("click", () => {
+        tabDayBtn.classList.add("active");
+        tabAllBtn.classList.remove("active");
+        tabWeekBtn.classList.remove("active");
+        currentRankTab = "day";
         renderRanking();
     });
 
