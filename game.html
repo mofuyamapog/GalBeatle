@@ -34,6 +34,7 @@
             margin: 0 auto;
             width: 100%;
             max-width: 480px;
+            position: relative;
         }
 
         canvas#gameCanvas {
@@ -147,7 +148,7 @@
             border-radius: 8px;
             position: relative;
             overflow: hidden;
-            background-image: url('gal.png');
+            background-image: url('gal.png'); /* 🌟 初期背景 */
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center top;
@@ -295,6 +296,10 @@ try {
 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwGW5pZ-TJwa_mGdcculSma2tf4F05N1tJ9tVI1hk5Trpce1Qy8AAfylbue6n1mmKA5/exec";
 
+    // 🌟【新機能】スマホの遅延対策：画像を起動時に完全に裏でロードしておく（キャッシュ化）
+    const imgCacheNormal = new Image(); imgCacheNormal.src = "gal.png";
+    const imgCacheHappy = new Image(); imgCacheHappy.src = "gal_happy.png";
+
     // --- サウンド生成システム ---
     let audioCtx = null;
     function playSound(type, comboCount = 1) {
@@ -371,7 +376,7 @@ try {
     let totalChainCount = 0;
     let nextSummonChain = 50;
     let summonStocks = 0;
-    let cutInTimer = 0; // 🌟 完全に安全な、内部プログラムだけの1秒タイマー
+    let cutInTimer = 0;
     let flashTimer = 0;
 
     let gal = { x: 120, y: 135, jumpY: 0, jumpSpeed: 0, text: "レッツばくれつ！", textTimer: 120, isHappy: false };
@@ -410,7 +415,7 @@ try {
 
     function loadRanking() {
         try {
-            if(!GAS_URL || GAS_URL.includes("ここに")) { rankingListEl.innerText = "ローカル稼働中"; return; }
+            if(!GAS_URL || GAS_URL.includes("ここに")) { rankingListEl.innerText = "ローローカル稼働中"; return; }
             fetch(GAS_URL)
             .then(res => res.json())
             .then(data => {
@@ -516,7 +521,6 @@ try {
     }
 
     function update() {
-        // 🌟【改善】時が止まるカウントダウン。100%バグらない安全な内部タイマー構造
         if (cutInTimer > 0) {
             cutInTimer--;
             if (cutInTimer <= 0) {
@@ -697,9 +701,8 @@ try {
             totalChainCount++;
             checkSummonUnlock();
 
-            // 🌟 25コンボ達成！キャンバス内テキストカットインをセット
             if (combo === 25) {
-                cutInTimer = 60; // 1秒停止
+                cutInTimer = 60; 
                 gal.isHappy = true;
                 shootPressed = false; moveLeft = false; moveRight = false; 
                 playSound('star');
@@ -768,7 +771,7 @@ try {
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-10, -10, 20, 5);
         galCtx.fillStyle = "#3498db"; galCtx.fillRect(-12, -5, 24, 10);
         galCtx.fillStyle = "#f5cba7"; galCtx.fillRect(-7, 5, 5, 15); galCtx.fillRect(2, 5, 5, 15);
-        galCtx.ffffff = "#ffffff"; galCtx.fillRect(-9, 12, 8, 12); galCtx.fillRect(1, 12, 8, 12);
+        galCtx.fillStyle = "#ffffff"; galCtx.fillRect(-9, 12, 8, 12); galCtx.fillRect(1, 12, 8, 12);
 
         galCtx.fillStyle = "#ffffff"; galCtx.strokeStyle = "#ff007f"; galCtx.lineWidth = 2;
         galCtx.fillRect(-105, -78, 210, 26); galCtx.strokeRect(-105, -78, 210, 26);
@@ -822,11 +825,15 @@ try {
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        // 🌟【プリロード対応・高速画像スイッチ】裏で読み込んだ画像データを一瞬でサイドバーへ反映！
         if (window.innerWidth < 768) {
             const galAreaEl = document.querySelector('.gal-area');
             if (galAreaEl) {
-                if (gal.isHappy) { galAreaEl.style.backgroundImage = "url('gal_happy.png')"; } 
-                else { galAreaEl.style.backgroundImage = "url('gal.png')"; }
+                if (gal.isHappy) { 
+                    galAreaEl.style.backgroundImage = `url('${imgCacheHappy.src}')`; 
+                } else { 
+                    galAreaEl.style.backgroundImage = `url('${imgCacheNormal.src}')`; 
+                }
             }
         }
 
@@ -851,7 +858,6 @@ try {
         shells.forEach(s => { drawShell(s.x, s.y, s.radius, s.angle); });
         fragments.forEach(f => { drawStar(f.x, f.y, f.radius + 2); });
         
-        // 🌟【文字カットイン】時間停止中、キャンバス内に100%安全にド派手文字エフェクトを描画！
         if (cutInTimer > 0) {
             ctx.fillStyle = "rgba(255, 0, 127, 0.3)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
