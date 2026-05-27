@@ -471,7 +471,10 @@ try {
             });
         }
 
+        // スコア降順に並び替え
         filteredData.sort((a, b) => b.score - a.score);
+        
+        // 上位10件を正確に抽出
         const top10 = filteredData.slice(0, 10);
 
         top10.forEach((item, index) => {
